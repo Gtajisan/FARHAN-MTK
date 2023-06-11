@@ -826,6 +826,26 @@ if __name__ == '__main__':
     da_dump.add_argument('--noreconnect', action="store_true", help='Disable reconnect')
     da_rpmb.add_argument('--noreconnect', action="store_true", help='Disable reconnect')
 
+    parser_script.add_argument('--uartloglevel', help='Set uart log level (0=Trace, 2=Normal)')
+    parser_printgpt.add_argument('--uartloglevel', help='Set uart log level (0=Trace, 2=Normal)')
+    parser_footer.add_argument('--uartloglevel', help='Set uart log level (0=Trace, 2=Normal)')
+    parser_e.add_argument('--uartloglevel', help='Set uart log level (0=Trace, 2=Normal)')
+    parser_es.add_argument('--uartloglevel', help='Set uart log level (0=Trace, 2=Normal)')
+    parser_wl.add_argument('--uartloglevel', help='Set uart log level (0=Trace, 2=Normal)')
+    parser_wf.add_argument('--uartloglevel', help='Set uart log level (0=Trace, 2=Normal)')
+    parser_w.add_argument('--uartloglevel', help='Set uart log level (0=Trace, 2=Normal)')
+    parser_rs.add_argument('--uartloglevel', help='Set uart log level (0=Trace, 2=Normal)')
+    parser_rf.add_argument('--uartloglevel', help='Set uart log level (0=Trace, 2=Normal)')
+    parser_rl.add_argument('--uartloglevel', help='Set uart log level (0=Trace, 2=Normal)')
+    parser_gpt.add_argument('--uartloglevel', help='Set uart log level (0=Trace, 2=Normal)')
+    parser_r.add_argument('--uartloglevel', help='Set uart log level (0=Trace, 2=Normal)')
+    da_keys.add_argument('--uartloglevel', help='Set uart log level (0=Trace, 2=Normal)')
+    da_unlock.add_argument('--uartloglevel', help='Set uart log level (0=Trace, 2=Normal)')
+    da_peek.add_argument('--uartloglevel', help='Set uart log level (0=Trace, 2=Normal)')
+    da_poke.add_argument('--uartloglevel', help='Set uart log level (0=Trace, 2=Normal)')
+    da_dump.add_argument('--uartloglevel', help='Set uart log level (0=Trace, 2=Normal)')
+    da_rpmb.add_argument('--uartloglevel', help='Set uart log level (0=Trace, 2=Normal)')
+
     args = parser.parse_args()
     cmd = args.cmd
     if cmd not in cmds:

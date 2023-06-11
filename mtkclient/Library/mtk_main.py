@@ -44,6 +44,12 @@ class ArgHandler(metaclass=LogBase):
                 config.reconnect = not args.noreconnect
         except AttributeError:
             pass
+        config.uartloglevel = 2
+        try:
+            if args.uartloglevel is not None:
+                config.uartloglevel = args.uartloglevel
+        except AttributeError:
+            pass
         try:
             if args.payload is not None:
                 config.payloadfile = args.payload
