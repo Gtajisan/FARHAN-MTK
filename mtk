@@ -806,6 +806,26 @@ if __name__ == '__main__':
     parser_gpt.add_argument('--serialport', help='Use serial port')
     parser_r.add_argument('--serialport', help='Use serial port')
 
+    parser_script.add_argument('--noreconnect', action="store_true", help='Disable reconnect')
+    parser_printgpt.add_argument('--noreconnect', action="store_true", help='Disable reconnect')
+    parser_footer.add_argument('--noreconnect', action="store_true", help='Disable reconnect')
+    parser_e.add_argument('--noreconnect', action="store_true", help='Disable reconnect')
+    parser_es.add_argument('--noreconnect', action="store_true", help='Disable reconnect')
+    parser_wl.add_argument('--noreconnect', action="store_true", help='Disable reconnect')
+    parser_wf.add_argument('--noreconnect', action="store_true", help='Disable reconnect')
+    parser_w.add_argument('--noreconnect', action="store_true", help='Disable reconnect')
+    parser_rs.add_argument('--noreconnect', action="store_true", help='Disable reconnect')
+    parser_rf.add_argument('--noreconnect', action="store_true", help='Disable reconnect')
+    parser_rl.add_argument('--noreconnect', action="store_true", help='Disable reconnect')
+    parser_gpt.add_argument('--noreconnect', action="store_true", help='Disable reconnect')
+    parser_r.add_argument('--noreconnect', action="store_true", help='Disable reconnect')
+    da_keys.add_argument('--noreconnect', action="store_true", help='Disable reconnect')
+    da_unlock.add_argument('--noreconnect', action="store_true", help='Disable reconnect')
+    da_peek.add_argument('--noreconnect', action="store_true", help='Disable reconnect')
+    da_poke.add_argument('--noreconnect', action="store_true", help='Disable reconnect')
+    da_dump.add_argument('--noreconnect', action="store_true", help='Disable reconnect')
+    da_rpmb.add_argument('--noreconnect', action="store_true", help='Disable reconnect')
+
     args = parser.parse_args()
     cmd = args.cmd
     if cmd not in cmds:

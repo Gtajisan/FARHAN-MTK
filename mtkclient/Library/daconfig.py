@@ -123,6 +123,7 @@ class DAconfig(metaclass=LogBase):
         self.boot1size = 0
         self.boot2size = 0
         self.flashtype = "emmc"
+        self.reconnect = self.config.reconnect
         self.sparesize = 0
         self.readsize = 0
         self.pagesize = 512

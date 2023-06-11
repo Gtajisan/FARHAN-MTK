@@ -374,7 +374,10 @@ class DAXFlash(metaclass=LogBase):
                 if self.usbwrite(pkt1):
                     if self.usbwrite(param):
                         if self.send_data(da):
-                            self.info(f"Upload data was accepted. Jumping to stage 2...")
+                            if at_address == 0x68000000:
+                                self.info(f"Extensions were accepted. Jumping to extensions...")
+                            else:
+                                self.info(f"Upload data was accepted. Jumping to stage 2...")
                             if timeout:
                                 time.sleep(timeout)
                             status = -1
@@ -1151,17 +1154,17 @@ class DAXFlash(metaclass=LogBase):
         self.daversion = self.get_da_version()
         self.randomid = self.get_random_id()
         speed = self.get_usb_speed()
-        if speed == b"full-speed":
-            self.info("Reconnecting to preloader")
-            self.config.set_gui_status(self.config.tr("Reconnecting to preloader"))
+        if speed == b"full-speed" and self.daconfig.reconnect:
+            self.info("Reconnecting to stage2 with higher speed")
+            self.config.set_gui_status(self.config.tr("Reconnecting to stage2 with higher speed"))
             self.set_usb_speed()
             self.mtk.port.close(reset=True)
             time.sleep(2)
             while not self.mtk.port.cdc.connect():
                 time.sleep(0.5)
-            self.info("Connected to preloader")
+            self.info("Connected to stage2 with higher speed")
             self.mtk.port.cdc.set_fast_mode(True)
-            self.config.set_gui_status(self.config.tr("Connected to preloader"))
+            self.config.set_gui_status(self.config.tr("Connected to stage2 with higher speed"))
 
     def upload_da(self):
         if self.upload():

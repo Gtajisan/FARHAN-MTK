@@ -1296,10 +1296,11 @@ class DALegacy(metaclass=LogBase):
                                 self.daconfig.flashsize = self.sdc.m_sdmmc_ua_size
                         elif self.daconfig.flashtype == "nor":
                             self.daconfig.flashsize = self.nor.m_nor_flash_size
-                        self.info("Connected to preloader")
+                        self.info("Connected to stage2")
                         speed = self.check_usb_cmd()
-                        if speed[0] == 0:  # 1 = USB High Speed, 2= USB Ultra high speed
-                            self.info("Reconnecting to preloader")
+                        if speed[0] == 0 and self.daconfig.reconnect:  # 1 = USB High Speed, 2= USB Ultra high speed
+                            self.info("Reconnecting to stage2 with higher speed")
+                            self.config.set_gui_status(self.config.tr("Reconnecting to stage2 with higher speed"))
                             self.set_usb_cmd()
                             self.mtk.port.close(reset=True)
                             time.sleep(1)
@@ -1307,7 +1308,8 @@ class DALegacy(metaclass=LogBase):
                                 self.info("Waiting for reconnection")
                                 time.sleep(0.5)
                             if self.check_usb_cmd():
-                                self.info("Connected to preloader")
+                                self.info("Connected to stage2 with higher speed")
+                                self.config.set_gui_status(self.config.tr("Connected to stage2 with higher speed"))
                                 self.mtk.port.cdc.set_fast_mode(True)
                             else:
                                 return False

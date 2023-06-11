@@ -11,6 +11,7 @@ from binascii import hexlify
 from mtkclient.Library.utils import mtktee
 import json
 
+
 class XCmd:
     CUSTOM_ACK = 0x0F0000
     CUSTOM_READ = 0x0F0001
@@ -177,8 +178,8 @@ class xflashext(metaclass=LogBase):
 
             da_version_check = find_binary(da1, b"\x1F\xB5\x00\x23\x01\xA8\x00\x93\x00\xF0\xDE\xFE")
             if da_version_check is not None:
-                da1patched=bytearray(da1patched)
-                da1patched[da_version_check:da_version_check+4] = b"\x00\x20\x70\x47"
+                da1patched = bytearray(da1patched)
+                da1patched[da_version_check:da_version_check + 4] = b"\x00\x20\x70\x47"
             else:
                 self.warning("Error on patching da1 version check...")
         else:
@@ -186,7 +187,7 @@ class xflashext(metaclass=LogBase):
         return da1patched
 
     def patch_da2(self, da2):
-        da2=self.mtk.patch_preloader_security(da2)
+        da2 = self.mtk.patch_preloader_security(da2)
         # Patch error 0xC0030007
         self.info("Patching da2 ...")
         # open("da2.bin","wb").write(da2)
@@ -290,7 +291,7 @@ class xflashext(metaclass=LogBase):
 
     def readmem(self, addr, dwords=1):
         res = []
-        if dwords<0x20:
+        if dwords < 0x20:
             for pos in range(dwords):
                 val = self.custom_readregister(addr + pos * 4)
                 if val == b"":
@@ -301,8 +302,8 @@ class xflashext(metaclass=LogBase):
                     return data
                 res.append(data)
         else:
-            res=self.custom_read(addr,dwords*4)
-            res=[unpack("<I",res[i:i+4])[0] for i in range(0,len(res),4)]
+            res = self.custom_read(addr, dwords * 4)
+            res = [unpack("<I", res[i:i + 4])[0] for i in range(0, len(res), 4)]
 
         self.debug(f"RX: {hex(addr)} -> " + hexlify(b"".join(pack("<I", val) for val in res)).decode('utf-8'))
         return res
@@ -311,15 +312,15 @@ class xflashext(metaclass=LogBase):
         if isinstance(dwords, int):
             dwords = [dwords]
         pos = 0
-        if len(dwords)<0x20:
+        if len(dwords) < 0x20:
             for val in dwords:
                 self.debug(f"TX: {hex(addr + pos)} -> " + hex(val))
                 if not self.custom_writeregister(addr + pos, val):
                     return False
                 pos += 4
         else:
-            dat=b"".join([pack("<I",val) for val in dwords])
-            self.custom_write(addr,dat)
+            dat = b"".join([pack("<I", val) for val in dwords])
+            self.custom_write(addr, dat)
         return True
 
     def writemem(self, addr, data):
@@ -371,8 +372,8 @@ class xflashext(metaclass=LogBase):
         hwc = self.cryptosetup()
         if self.config.chipconfig.meid_addr:
             meid = self.config.get_meid()
-            if meid != b"\x00"*16:
-                #self.config.set_meid(meid)
+            if meid != b"\x00" * 16:
+                # self.config.set_meid(meid)
                 self.info("Generating sej rpmbkey...")
                 self.setotp(hwc)
                 rpmbkey = hwc.aes_hwcrypt(mode="rpmb", data=meid, btype="sej")
@@ -393,7 +394,7 @@ class xflashext(metaclass=LogBase):
             cmd = XCmd.CUSTOM_INIT_UFS_RPMB
         if self.cmd(cmd):
             derivedrpmb = self.xread()
-            if int.from_bytes(derivedrpmb[:4],'little') != 0xff:
+            if int.from_bytes(derivedrpmb[:4], 'little') != 0xff:
                 status = self.status()
                 if status == 0:
                     self.info("Derived rpmb key:" + hexlify(derivedrpmb).decode('utf-8'))
@@ -412,7 +413,7 @@ class xflashext(metaclass=LogBase):
         hwc.sej.sej_set_otp(otp)
 
     def read_rpmb(self, filename=None, display=True):
-        progressbar = progress(1,self.mtk.config.guiprogress)
+        progressbar = progress(1, self.mtk.config.guiprogress)
         sectors = 0
         val = self.custom_rpmb_init()
         ufs = False
@@ -428,7 +429,7 @@ class xflashext(metaclass=LogBase):
             with open(filename, "wb") as wf:
                 for sector in range(sectors):
                     if display:
-                        progressbar.show_progress("RPMB read", sector*0x100, sectors*0x100, display)
+                        progressbar.show_progress("RPMB read", sector * 0x100, sectors * 0x100, display)
                     data = self.custom_rpmb_read(sector=sector, ufs=ufs)
                     if data == b"":
                         self.error("Couldn't read rpmb.")
@@ -457,7 +458,7 @@ class xflashext(metaclass=LogBase):
                 with open(filename, "rb") as rf:
                     for sector in range(sectors):
                         if display:
-                            progressbar.show_progress("RPMB written", sector*0x100, sectors*0x100, display)
+                            progressbar.show_progress("RPMB written", sector * 0x100, sectors * 0x100, display)
                         if not self.custom_rpmb_write(sector=sector, data=rf.read(0x100), ufs=ufs):
                             self.error(f"Couldn't write rpmb at sector {sector}.")
                             return False
@@ -477,7 +478,7 @@ class xflashext(metaclass=LogBase):
             if sectors > 0:
                 for sector in range(sectors):
                     if display:
-                        progressbar.show_progress("RPMB erased", sector*0x100, sectors*0x100, display)
+                        progressbar.show_progress("RPMB erased", sector * 0x100, sectors * 0x100, display)
                     if not self.custom_rpmb_write(sector=sector, data=b"\x00" * 0x100, ufs=ufs):
                         self.error(f"Couldn't erase rpmb at sector {sector}.")
                         return False
@@ -544,25 +545,25 @@ class xflashext(metaclass=LogBase):
             return True, "Successfully wrote seccfg."
         return False, "Error on writing seccfg config to flash."
 
-    def decrypt_tee(self, filename="tee1.bin", aeskey1:bytes=None, aeskey2:bytes=None):
+    def decrypt_tee(self, filename="tee1.bin", aeskey1: bytes = None, aeskey2: bytes = None):
         hwc = self.cryptosetup()
         with open(filename, "rb") as rf:
-            data=rf.read()
-            idx=0
-            while idx!=-1:
-                idx=data.find(b"EET KTM ",idx+1)
-                if idx!=-1:
+            data = rf.read()
+            idx = 0
+            while idx != -1:
+                idx = data.find(b"EET KTM ", idx + 1)
+                if idx != -1:
                     mt = mtktee()
                     mt.parse(data[idx:])
-                    rdata=hwc.mtee(data=mt.data, keyseed=mt.keyseed, ivseed=mt.ivseed,
-                                   aeskey1=aeskey1, aeskey2=aeskey2)
-                    open("tee_"+hex(idx)+".dec","wb").write(rdata)
+                    rdata = hwc.mtee(data=mt.data, keyseed=mt.keyseed, ivseed=mt.ivseed,
+                                     aeskey1=aeskey1, aeskey2=aeskey2)
+                    open("tee_" + hex(idx) + ".dec", "wb").write(rdata)
 
     def read_fuse(self, idx):
         if self.mtk.config.chipconfig.efuse_addr is not None:
             base = self.mtk.config.chipconfig.efuse_addr
             hwcode = self.mtk.config.hwcode
-            efuseconfig = efuse(base,hwcode)
+            efuseconfig = efuse(base, hwcode)
             addr = efuseconfig.efuses[idx]
             data = bytearray(self.mtk.daloader.peek(addr=addr, length=4))
             return data
@@ -659,12 +660,12 @@ class xflashext(metaclass=LogBase):
             return retval
         elif self.config.chipconfig.sej_base is not None:
             if os.path.exists("tee.json"):
-                val=json.loads(open("tee.json","r").read())
-                self.decrypt_tee(val["filename"],bytes.fromhex(val["data"]),bytes.fromhex(val["data2"]))
+                val = json.loads(open("tee.json", "r").read())
+                self.decrypt_tee(val["filename"], bytes.fromhex(val["data"]), bytes.fromhex(val["data2"]))
             if meid == b"":
                 meid = self.custom_read(0x1008ec, 16)
             if meid != b"":
-                #self.config.set_meid(meid)
+                # self.config.set_meid(meid)
                 self.info("Generating sej rpmbkey...")
                 self.setotp(hwc)
                 rpmbkey = hwc.aes_hwcrypt(mode="rpmb", data=meid, btype="sej")
@@ -686,7 +687,7 @@ class xflashext(metaclass=LogBase):
             else:
                 self.info("SEJ Mode: No meid found. Are you in brom mode ?")
         if self.config.chipconfig.gcpu_base is not None:
-            if self.config.hwcode in [0x335,0x8167,0x8163,0x8176]:
+            if self.config.hwcode in [0x335, 0x8167, 0x8163, 0x8176]:
                 self.info("Generating gcpu mtee2 key...")
                 mtee2 = hwc.aes_hwcrypt(btype="gcpu", mode="mtee")
                 if mtee2 is not None:

@@ -38,6 +38,12 @@ class ArgHandler(metaclass=LogBase):
                 config.pid = getint(args.pid)
         except AttributeError:
             pass
+        config.reconnect = True
+        try:
+            if args.noreconnect is not None:
+                config.reconnect = not args.noreconnect
+        except AttributeError:
+            pass
         try:
             if args.payload is not None:
                 config.payloadfile = args.payload
