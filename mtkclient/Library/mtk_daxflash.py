@@ -1046,7 +1046,7 @@ class DAXFlash(metaclass=LogBase):
 
     def setup_env(self):
         if self.xsend(self.Cmd.SETUP_ENVIRONMENT):
-            da_log_level = 2
+            da_log_level = 0
             log_channel = 1
             system_os = self.FtSystemOSE.OS_LINUX
             ufs_provision = 0x0
