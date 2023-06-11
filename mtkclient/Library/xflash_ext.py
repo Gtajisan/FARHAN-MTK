@@ -173,7 +173,7 @@ class xflashext(metaclass=LogBase):
         self.info("Patching da1 ...")
         if da1 is not None:
             da1patched = bytearray(da1)
-            da1patched = self.mtk.patch_preloader_security(da1patched)
+            da1patched = self.mtk.patch_preloader_security_da1(da1patched)
             # Patch security
 
             da_version_check = find_binary(da1, b"\x1F\xB5\x00\x23\x01\xA8\x00\x93\x00\xF0\xDE\xFE")
@@ -187,7 +187,7 @@ class xflashext(metaclass=LogBase):
         return da1patched
 
     def patch_da2(self, da2):
-        da2 = self.mtk.patch_preloader_security(da2)
+        da2 = self.mtk.patch_preloader_security_da2(da2)
         # Patch error 0xC0030007
         self.info("Patching da2 ...")
         # open("da2.bin","wb").write(da2)

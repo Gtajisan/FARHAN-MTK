@@ -459,7 +459,7 @@ class Main(metaclass=LogBase):
                 with open(plstage, "rb") as rf:
                     rf.seek(0)
                     if os.path.basename(plstage)!="pl.bin":
-                        pldata = mtk.patch_preloader_security(rf.read())
+                        pldata = mtk.patch_preloader_security_da1(rf.read())
                     else:
                         pldata = rf.read()
             if mtk.preloader.init():
@@ -477,13 +477,13 @@ class Main(metaclass=LogBase):
                              "Trying to dump preloader from ram.")
                 plt = PLTools(mtk=mtk, loglevel=self.__logger.level)
                 dadata, filename = plt.run_dump_preloader(self.args.ptype)
-                mtk.config.preloader = mtk.patch_preloader_security(dadata)
+                mtk.config.preloader = mtk.patch_preloader_security_da1(dadata)
 
             if mtk.config.preloader_filename is not None:
                 self.info("Using custom preloader : " + mtk.config.preloader_filename)
                 mtk.preloader.setreg_disablewatchdogtimer(mtk.config.hwcode)
                 daaddr, dadata = mtk.parse_preloader(mtk.config.preloader_filename)
-                dadata = mtk.config.preloader = mtk.patch_preloader_security(dadata)
+                dadata = mtk.config.preloader = mtk.patch_preloader_security_da1(dadata)
                 if mtk.preloader.send_da(daaddr, len(dadata), 0x100, dadata):
                     self.info(f"Sent preloader to {hex(daaddr)}, length {hex(len(dadata))}")
                     if mtk.preloader.jump_da(daaddr):
