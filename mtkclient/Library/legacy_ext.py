@@ -107,9 +107,9 @@ class legacyext(metaclass=LogBase):
         dwords=length//4
         if length%4!=0:
             dwords+=1
-        #data = bytearray(b"".join(int.to_bytes(val,4,'little') for val in [self.legacy.read_reg32(addr + pos * 4) for pos in range(dwords)]))
-        res = self.legacy.custom_F0(addr, dwords)
-        data = bytearray(b"".join([int.to_bytes(val,4,'little') for val in res]))
+        data = bytearray(b"".join(int.to_bytes(val,4,'little') for val in [self.legacy.read_reg32(addr + pos * 4) for pos in range(dwords)]))
+        #res = self.legacy.custom_F0(addr, dwords)
+        #data = bytearray(b"".join([int.to_bytes(val,4,'little') for val in res]))
         return data[:length]
 
     def writeregister(self, addr, dwords):
