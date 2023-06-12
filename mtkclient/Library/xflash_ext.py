@@ -6,7 +6,7 @@ from mtkclient.config.brom_config import efuse
 from mtkclient.Library.error import ErrorHandler, ErrorCodes_XFlash
 from mtkclient.Library.hwcrypto import crypto_setup, hwcrypto
 from mtkclient.Library.utils import LogBase, progress, logsetup, find_binary
-from mtkclient.Library.seccfg import seccfg
+from mtkclient.Library.seccfg import seccfgV3, seccfgV4
 from binascii import hexlify
 from mtkclient.Library.utils import mtktee
 import json
@@ -372,11 +372,11 @@ class xflashext(metaclass=LogBase):
         hwc = self.cryptosetup()
         if self.config.chipconfig.meid_addr:
             meid = self.config.get_meid()
+            otp = self.config.get_otp()
             if meid != b"\x00" * 16:
                 # self.config.set_meid(meid)
                 self.info("Generating sej rpmbkey...")
-                self.setotp(hwc)
-                rpmbkey = hwc.aes_hwcrypt(mode="rpmb", data=meid, btype="sej")
+                rpmbkey = hwc.aes_hwcrypt(mode="rpmb", data=meid, btype="sej", otp=otp)
                 if rpmbkey is not None:
                     if self.cmd(XCmd.CUSTOM_SET_RPMB_KEY):
                         self.xsend(rpmbkey)
@@ -503,8 +503,6 @@ class xflashext(metaclass=LogBase):
     def seccfg(self, lockflag):
         if lockflag not in ["unlock", "lock"]:
             return False, "Valid flags are: unlock, lock"
-        hwc = self.cryptosetup()
-        sc_org = seccfg(hwc)
         data, guid_gpt = self.xflash.partition.get_gpt(self.mtk.config.gpt_settings, "user")
         seccfg_data = None
         partition = None
@@ -522,23 +520,29 @@ class xflashext(metaclass=LogBase):
             return False, "Couldn't detect existing seccfg partition. Aborting unlock."
         if seccfg_data[:4] != pack("<I", 0x4D4D4D4D):
             return False, "Unknown seccfg partition header. Aborting unlock."
-
-        if not sc_org.parse(seccfg_data):
-            return False, "Error on parsing seccfg"
-        sc_new = seccfg(hwc)
-        self.setotp(hwc)
-        hwtype = "hw"
-        V3 = True
-        sc_new.create(sc_org=sc_org, hwtype=hwtype, V3=V3)
-        if sc_org.hash != sc_new.hash:
-            V3 = False
+        hwc = self.cryptosetup()
+        if seccfg_data[:0xC] == b"AND_SECCFG_v":
+            sc_org = seccfgV3(hwc, self.mtk)
+            if not sc_org.parse(seccfg_data):
+                return False, "V3 Device has is either already unlocked or algo is unknown. Aborting."
+            writedata = sc_org.create(lockflag)
+        else:
+            sc_org = seccfgV4(hwc, self.mtk)
+            if not sc_org.parse(seccfg_data):
+                return False, "Error on parsing seccfg"
+            sc_new = seccfgV4(hwc, self.mtk)
+            hwtype = "hw"
+            V3 = True
             sc_new.create(sc_org=sc_org, hwtype=hwtype, V3=V3)
-        if sc_org.hash != sc_new.hash:
-            hwtype = "sw"
-            sc_new.create(sc_org=sc_org, hwtype=hwtype)
             if sc_org.hash != sc_new.hash:
-                return False, "Device has is either already unlocked or algo is unknown. Aborting."
-        writedata = sc_new.create(sc_org=None, hwtype=hwtype, lockflag=lockflag, V3=V3)
+                V3 = False
+                sc_new.create(sc_org=sc_org, hwtype=hwtype, V3=V3)
+            if sc_org.hash != sc_new.hash:
+                hwtype = "sw"
+                sc_new.create(sc_org=sc_org, hwtype=hwtype)
+                if sc_org.hash != sc_new.hash:
+                    return False, "Device has is either already unlocked or algo is unknown. Aborting."
+            writedata = sc_new.create(sc_org=None, hwtype=hwtype, lockflag=lockflag, V3=V3)
         if self.xflash.writeflash(addr=partition.sector * self.mtk.daloader.daconfig.pagesize,
                                   length=len(writedata),
                                   filename=None, wdata=writedata, parttype="user", display=True):
@@ -569,13 +573,27 @@ class xflashext(metaclass=LogBase):
             return data
         return None
 
+    def read_fuses(self):
+        if self.mtk.config.chipconfig.efuse_addr is not None:
+            base = self.mtk.config.chipconfig.efuse_addr
+            hwcode = self.mtk.config.hwcode
+            efuseconfig = efuse(base, hwcode)
+            data = []
+            for idx in range(len(efuseconfig.efuses)):
+                addr = efuseconfig.efuses[idx]
+                data.append(bytearray(self.mtk.daloader.peek(addr=addr, length=4)))
+            return data
+
     def generate_keys(self):
         hwc = self.cryptosetup()
         meid = self.config.get_meid()
         socid = self.config.get_socid()
         hwcode = self.config.get_hwcode()
         cid = self.config.get_cid()
+        otp = self.config.get_otp()
         retval = {}
+        #data=hwc.aes_hwcrypt(data=bytes.fromhex("F6 25 25 AD 0C A4 3A AA CC EF 93 1F 2D C2 A3 EE"), mode="sst", btype="sej",
+        #                encrypt=True)
         if meid is not None:
             self.info("MEID        : " + hexlify(meid).decode('utf-8'))
             retval["meid"] = hexlify(meid).decode('utf-8')
@@ -668,18 +686,18 @@ class xflashext(metaclass=LogBase):
                 # self.config.set_meid(meid)
                 self.info("Generating sej rpmbkey...")
                 self.setotp(hwc)
-                rpmbkey = hwc.aes_hwcrypt(mode="rpmb", data=meid, btype="sej")
+                rpmbkey = hwc.aes_hwcrypt(mode="rpmb", data=meid, btype="sej", otp=otp)
                 if rpmbkey:
                     self.info("RPMB        : " + hexlify(rpmbkey).decode('utf-8'))
                     self.config.hwparam.writesetting("rpmbkey", hexlify(rpmbkey).decode('utf-8'))
                     retval["rpmbkey"] = hexlify(rpmbkey).decode('utf-8')
                 self.info("Generating sej mtee...")
-                mtee = hwc.aes_hwcrypt(mode="mtee", btype="sej")
+                mtee = hwc.aes_hwcrypt(mode="mtee", btype="sej", otp=otp)
                 if mtee:
                     self.config.hwparam.writesetting("mtee", hexlify(mtee).decode('utf-8'))
                     self.info("MTEE        : " + hexlify(mtee).decode('utf-8'))
                     retval["mtee"] = hexlify(mtee).decode('utf-8')
-                mtee3 = hwc.aes_hwcrypt(mode="mtee3", btype="sej")
+                mtee3 = hwc.aes_hwcrypt(mode="mtee3", btype="sej", otp=otp)
                 if mtee3:
                     self.config.hwparam.writesetting("mtee3", hexlify(mtee3).decode('utf-8'))
                     self.info("MTEE3       : " + hexlify(mtee3).decode('utf-8'))

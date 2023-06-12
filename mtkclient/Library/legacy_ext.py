@@ -6,7 +6,7 @@ from mtkclient.config.payloads import pathconfig
 from mtkclient.Library.error import ErrorHandler
 from mtkclient.Library.hwcrypto import crypto_setup, hwcrypto
 from mtkclient.Library.utils import LogBase, logsetup, find_binary
-from mtkclient.Library.seccfg import seccfg
+from mtkclient.Library.seccfg import seccfgV4, seccfgV3
 from binascii import hexlify
 from mtkclient.Library.utils import mtktee
 import hashlib
@@ -160,105 +160,10 @@ class legacyext(metaclass=LogBase):
         setup.writemem = self.writemem
         return hwcrypto(setup, self.loglevel, self.config.gui)
 
-    def seccfg_custom_V3(self, seccfg_data, lockflag, hwc, partition):
-
-        # enum {
-        ATTR_LOCK       = 0x6000
-        ATTR_VERIFIED   = 0x6001
-        ATTR_CUSTOM     = 0x6002
-        ATTR_MP_DEFAULT = 0x6003
-        ATTR_DEFAULT    = 0x33333333
-        ATTR_UNLOCK     = 0x44444444
-        # } SECCFG_ATTR;
-
-        magic_number_beg = 0x10
-        magic_number_end = magic_number_beg + 4
-
-        secattr_beg = 0x854
-
-        enc_cfg_sz = 0x1860
-        enc_cfg_beg = 0x2C
-        enc_cfg_end = enc_cfg_sz - 4
-
-        enc_cfg_secattr = secattr_beg - enc_cfg_beg
-
-        if seccfg_data[magic_number_beg : magic_number_end] != pack("<I", 0x4D4D4D4D):
-            return False
-
-        sc_new = seccfg(hwc)
-        self.setotp(hwc)
-
-        enc_data = seccfg_data[enc_cfg_beg : enc_cfg_end]
-
-        self.info("Attempt decrypt current seccfg")
-        data_wr = sc_new.hwc.sej.sej_sec_cfg_hw_V3(enc_data, False)
-
-
-        if lockflag == "lock":
-            _SEC_ATTR_NEW = ATTR_DEFAULT
-        else:
-            _SEC_ATTR_NEW = ATTR_UNLOCK
-
-
-        _SEC_ATTR_CURRENT = data_wr[enc_cfg_secattr : enc_cfg_secattr + 4]
-        _SEC_ATTR_CURRENT = unpack('<I', _SEC_ATTR_CURRENT)[0]
-
-
-        if (lockflag == "lock"
-        and _SEC_ATTR_CURRENT != ATTR_UNLOCK):
-            return False, ("Can't find lock state, current (%#x)" % _SEC_ATTR_CURRENT)
-        elif (lockflag == "unlock"
-        and _SEC_ATTR_CURRENT != ATTR_DEFAULT
-        and _SEC_ATTR_CURRENT != ATTR_MP_DEFAULT
-        and _SEC_ATTR_CURRENT != ATTR_CUSTOM
-        and _SEC_ATTR_CURRENT != ATTR_VERIFIED
-        and _SEC_ATTR_CURRENT != ATTR_LOCK):
-            return False, ("Can't find unlock state, current (%#x)" % _SEC_ATTR_CURRENT)
-
-
-        self.info("Set %s flag" % lockflag)
-        data_wr[enc_cfg_secattr : enc_cfg_secattr + 4] = pack('<I', _SEC_ATTR_NEW)
-
-        self.info("Attempt encrypt new seccfg")
-        enc_data = sc_new.hwc.sej.sej_sec_cfg_hw_V3(data_wr, True)
-
-        # Test new seccfg {
-        self.info("Attempt decrypt new seccfg")
-        data_wr = sc_new.hwc.sej.sej_sec_cfg_hw_V3(enc_data, False)
-
-        if data_wr[enc_cfg_secattr : enc_cfg_secattr + 4] == pack('<I', _SEC_ATTR_NEW):
-            self.info("Test OK. Set %s in new seccfg successfully" % lockflag)
-        else:
-            return False, "Test error. Can't decrypt new seccfg"
-        # }
-
-        seccfg_data[enc_cfg_beg : enc_cfg_end] = enc_data
-
-        # 0x22 is (SECURE_CFG_V3*)->fb_status
-        # 0x23 is (SECURE_CFG_V3*)->dbg_status
-        if lockflag == "lock":
-            seccfg_data[0x22:0x23] = b'\x00'
-            seccfg_data[0x23:0x24] = b'\x01'
-        elif lockflag == "unlock":
-            # seccfg_data[0x22:0x23] = b'\x67'
-            seccfg_data[0x22:0x23] = b'\xF2'
-            seccfg_data[0x23:0x24] = b'\x07'
-
-        enc_writedata = seccfg_data
-
-
-        self.info("Attempt write new seccfg config")
-        if self.legacy.writeflash(addr=partition.sector * self.mtk.daloader.daconfig.pagesize,
-                                  length=len(enc_writedata),
-                                  filename=None, wdata=enc_writedata, parttype="user", display=True):
-            return True, "Successfully wrote custom seccfg."
-        return False, "Error on writing custom seccfg config to flash."
-
     def seccfg(self, lockflag):
         if lockflag not in ["unlock", "lock"]:
             return False, "Valid flags are: unlock, lock"
         hwc = self.cryptosetup()
-        sc_org = seccfg(hwc)
         data, guid_gpt = self.legacy.partition.get_gpt(self.mtk.config.gpt_settings, "user")
         seccfg_data = None
         partition = None
@@ -272,32 +177,29 @@ class legacyext(metaclass=LogBase):
                 break
         if seccfg_data is None:
             return False, "Couldn't detect existing seccfg partition. Aborting unlock."
-        if seccfg_data[:4] != pack("<I", 0x4D4D4D4D):
-            # Probe antother seccfg format
-            state, msg = self.seccfg_custom_V3(seccfg_data, lockflag, hwc, partition)
-            if state:
-                return True, msg
-            else:
-                self.info(msg)
-
-            return False, "Unknown seccfg partition header. Aborting unlock."
-
-        if not sc_org.parse(seccfg_data):
-            return False, "Error on parsing seccfg."
-        sc_new = seccfg(hwc)
-        self.setotp(hwc)
-        hwtype = "hw"
-        V3 = True
-        sc_new.create(sc_org=sc_org, hwtype=hwtype, V3=V3)
-        if sc_org.hash != sc_new.hash:
-            V3=False
+        if seccfg_data[:0xC] == b"AND_SECCFG_v":
+            sc_org = seccfgV3(hwc, self.mtk)
+            if not sc_org.parse(seccfg_data):
+                return False, "V3 Device has is either already unlocked or algo is unknown. Aborting."
+            writedata = sc_org.create(lockflag)
+        else:
+            sc_org = seccfgV4(hwc,self.mtk)
+            if not sc_org.parse(seccfg_data):
+                return False, "Error on parsing seccfg."
+            sc_new = seccfgV4(hwc,self.mtk)
+            self.setotp(hwc)
+            hwtype = "hw"
+            V3 = True
             sc_new.create(sc_org=sc_org, hwtype=hwtype, V3=V3)
-        if sc_org.hash != sc_new.hash:
-            hwtype = "sw"
-            sc_new.create(sc_org=sc_org, hwtype=hwtype)
             if sc_org.hash != sc_new.hash:
-                return False, "Device has is either already unlocked or algo is unknown. Aborting."
-        writedata = sc_new.create(sc_org=None, hwtype=hwtype, lockflag=lockflag, V3=V3)
+                V3=False
+                sc_new.create(sc_org=sc_org, hwtype=hwtype, V3=V3)
+            if sc_org.hash != sc_new.hash:
+                hwtype = "sw"
+                sc_new.create(sc_org=sc_org, hwtype=hwtype)
+                if sc_org.hash != sc_new.hash:
+                    return False, "Device has is either already unlocked or algo is unknown. Aborting."
+            writedata = sc_new.create(sc_org=None, hwtype=hwtype, lockflag=lockflag, V3=V3)
         if self.legacy.writeflash(addr=partition.sector * self.mtk.daloader.daconfig.pagesize,
                                   length=len(writedata),
                                   filename=None, wdata=writedata, parttype="user", display=True):
@@ -380,7 +282,8 @@ class legacyext(metaclass=LogBase):
                 open(os.path.join("logs", "hrid.txt"), "wb").write(hexlify(hrid))
             """
             if hwcode == 0x699 and self.config.chipconfig.sej_base:
-                mtee3 = hwc.aes_hwcrypt(mode="mtee3", btype="sej")
+                otp = self.config.get_otp()
+                mtee3 = hwc.aes_hwcrypt(mode="mtee3", btype="sej", otp=otp)
                 if mtee3:
                     self.info("MTEE3       : " + hexlify(mtee3).decode('utf-8'))
                     self.config.hwparam.writesetting("mtee3", hexlify(mtee3).decode('utf-8'))
@@ -397,21 +300,22 @@ class legacyext(metaclass=LogBase):
                     meid_addr = self.config.chipconfig.meid_addr
                 meid = b"".join([pack("<I", val) for val in self.readmem(meid_addr, 4)])
             if meid != b"":
+                otp = self.config.get_otp()
                 self.info("Generating sej rpmbkey...")
                 self.setotp(hwc)
-                rpmbkey = hwc.aes_hwcrypt(mode="rpmb", data=meid, btype="sej")
+                rpmbkey = hwc.aes_hwcrypt(mode="rpmb", data=meid, btype="sej", otp=otp)
                 if rpmbkey:
                     self.info("RPMB        : " + hexlify(rpmbkey).decode('utf-8'))
                     self.config.hwparam.writesetting("rpmbkey", hexlify(rpmbkey).decode('utf-8'))
                     retval["rpmbkey"] = hexlify(rpmbkey).decode('utf-8')
                 self.info("Generating sej mtee...")
-                mtee = hwc.aes_hwcrypt(mode="mtee", btype="sej")
+                mtee = hwc.aes_hwcrypt(mode="mtee", btype="sej", otp=otp)
                 if mtee:
                     self.info("MTEE        : " + hexlify(mtee).decode('utf-8'))
                     self.config.hwparam.writesetting("mtee", hexlify(mtee).decode('utf-8'))
                     retval["mtee"] = hexlify(mtee).decode('utf-8')
                 self.info("Generating sej mtee3...")
-                mtee3 = hwc.aes_hwcrypt(mode="mtee3", btype="sej")
+                mtee3 = hwc.aes_hwcrypt(mode="mtee3", btype="sej", otp=otp)
                 if mtee3:
                     self.info("MTEE3       : " + hexlify(mtee3).decode('utf-8'))
                     self.config.hwparam.writesetting("mtee3", hexlify(mtee3).decode('utf-8'))

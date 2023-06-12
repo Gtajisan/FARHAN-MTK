@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 # (c) B.Kerler 2018-2021 GPLv3 License
 import logging
+import sys
 
 from mtkclient.Library.utils import LogBase, logsetup
 from mtkclient.Library.hwcrypto_gcpu import GCpu
@@ -62,12 +63,17 @@ class hwcrypto(metaclass=LogBase):
                 if mode == "cbc":
                     return self.sej.hw_aes128_cbc_encrypt(buf=data, encrypt=True)
                 elif mode == "sst":
-                    return self.sej.hw_aes128_sst_encrypt(buf=data, encrypt=True)
+                    data2=self.sej.generate_hw_meta(encrypt=True,data=data)
+                    data3=self.sej.SST_Secure_Algo_With_Level(buf=data, encrypt=True)
+                    print(data2.hex())
+                    print(data3.hex())
+                    sys.stdout.flush()
+                    return data3
             else:
                 if mode == "cbc":
                     return self.sej.hw_aes128_cbc_encrypt(buf=data, encrypt=False)
                 elif mode == "sst":
-                    return self.sej.hw_aes128_sst_encrypt(buf=data, encrypt=False)
+                    return self.sej.SST_Secure_Algo_With_Level(buf=data, encrypt=False)
             if mode == "rpmb":
                 return self.sej.generate_rpmb(meid=data, otp=otp)
             elif mode == "mtee":

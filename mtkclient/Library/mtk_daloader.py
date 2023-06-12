@@ -244,6 +244,12 @@ class DAloader(metaclass=LogBase):
         else:
             return self.lft.generate_keys()
 
+    def readfuses(self):
+        if self.xflash:
+            return self.xft.readfuses()
+        else:
+            return self.lft.readfuses()
+
     def is_patched(self):
         return self.da.patch
 
