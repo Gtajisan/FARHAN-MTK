@@ -600,13 +600,18 @@ class sej(metaclass=LogBase):
         self.sej_set_key(AES_HW_WRAP_KEY, AES_KEY_256, hw_key)
 
     def sej_sec_cfg_sw(self, data, encrypt=True):
-        #self.sej_set_mode(AES_CBC_MODE)
-        #self.sej_set_key(AES_SW_KEY, AES_KEY_256, b"1A52A367CB12C458965D32CD874B36B2")
-        #iv = bytes.fromhex("57325A5A125497661254976657325A5A")
-        #res = self.sej_do_aes(encrypt, iv, data, len(data))
+        """
+        Left for reference - hw implementation
+        --------------------------------------
+        self.sej_set_mode(AES_CBC_MODE)
+        self.sej_set_key(AES_SW_KEY, AES_KEY_256, b"1A52A367CB12C458965D32CD874B36B2")
+        iv = bytes.fromhex("57325A5A125497661254976657325A5A")
+        res = self.sej_do_aes(encrypt, iv, data, len(data))
+        """
         ctx = cryptutils.aes()
         res = ctx.aes_cbc(key=b"25A1763A21BC854CD569DC23B4782B63",
-                          iv=bytes.fromhex("57325A5A125497661254976657325A5A"), data=data)
+                          iv=bytes.fromhex("57325A5A125497661254976657325A5A"), data=data,
+                          decrypt=not encrypt)
         return res
 
     def xor_data(self, data):

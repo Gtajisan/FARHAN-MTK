@@ -3,6 +3,8 @@ from mtkclient.Library.utils import structhelper_io
 from io import BytesIO
 import hashlib
 
+from mtkclient.config.mtk_config import Mtk_Config
+
 
 class seccfgV4:
     def __init__(self, hwc, mtk):
@@ -118,6 +120,9 @@ class SEC_IMG_ATTR:
 
 class seccfgV3:
     def __init__(self, hwc, mtk):
+        self.hwtype = None
+        self.data = None
+        self.org_data = None
         self.hwc = hwc
         self.mtk = mtk
         self.info = b"AND_SECCFG_v\x00\x00\x00\x00"
@@ -136,7 +141,8 @@ class seccfgV3:
         self.seccfg_status = SECCFG_STATUS.SEC_CFG_COMPLETE_NUM
         self.seccfg_attr = SECCFG_ATTR.ATTR_DEFAULT
         self.seccfg_ext = b"\x00" * 0x1004
-        self.setotp(hwc)
+        if self.hwc.read32 is not None:
+            self.setotp(hwc)
 
     def setotp(self, hwc):
         otp = None
@@ -181,7 +187,7 @@ class seccfgV3:
                 self.hwtype = "V2"
         else:
             self.hwtype = "SW"
-
+        self.org_data = ret
         ed = structhelper_io(BytesIO(bytearray(ret)))
         self.imginfo = [ed.bytes(0x68) for _ in range(20)]
         self.siu_status = ed.dword()
@@ -204,6 +210,7 @@ class seccfgV3:
             self.seccfg_enc_len = 0x01000000
             seccfg_attr_new = SECCFG_ATTR.ATTR_DEFAULT
 
+        """
         if lockflag == "lock" and self.seccfg_attr != SECCFG_ATTR.ATTR_UNLOCK:
             return False, ("Can't find lock state, current (%#x)" % self.seccfg_attr)
         elif lockflag == "unlock" and self.seccfg_attr != SECCFG_ATTR.ATTR_DEFAULT \
@@ -212,7 +219,7 @@ class seccfgV3:
                 and self.seccfg_attr != SECCFG_ATTR.ATTR_VERIFIED \
                 and self.seccfg_attr != SECCFG_ATTR.ATTR_LOCK:
             return False, ("Can't find unlock state, current (%#x)" % self.seccfg_attr)
-
+        """
         data = bytearray()
         wf = BytesIO(data)
         wf.write(self.info)
@@ -243,7 +250,21 @@ class seccfgV3:
         wf.write(data)
         wf.write(int.to_bytes(self.endflag, 4, 'little'))
 
-        data = wf.getbuffer()
+        data = bytearray(wf.getbuffer())
         while len(data) % 0x200 != 0:
             data += b"\x00"
         return bytearray(data)
+
+if __name__ == "__main__":
+    with open("seccfg.bin","rb") as rf:
+        data = rf.read()
+    from hwcrypto import hwcrypto, crypto_setup
+    setup = crypto_setup()
+    hwc = hwcrypto(setup)
+    class mtk:
+        config = Mtk_Config()
+        sej_base = None
+    v3=seccfgV3(hwc,mtk)
+    v3.parse(data)
+    newdata=v3.create("lock")
+    print(newdata.hex())
