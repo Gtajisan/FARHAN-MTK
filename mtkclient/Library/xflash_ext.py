@@ -524,7 +524,7 @@ class xflashext(metaclass=LogBase):
         if seccfg_data[:0xC] == b"AND_SECCFG_v":
             sc_org = seccfgV3(hwc, self.mtk)
             if not sc_org.parse(seccfg_data):
-                return False, "Error on parsing seccfg"
+                return False, "V3 Device has is either already unlocked or algo is unknown. Aborting."
             writedata = sc_org.create(lockflag)
         else:
             sc_org = seccfgV4(hwc, self.mtk)
