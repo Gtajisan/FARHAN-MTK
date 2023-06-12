@@ -4,8 +4,10 @@
 import logging, os
 from struct import pack, unpack
 from mtkclient.Library.utils import LogBase
+from mtkclient.Library.cryptutils import cryptutils
 
-CustomSeed = bytearray(b"12abcdef")
+CustomSeed = bytes.fromhex("00be13bb95e218b53d07a089cb935255294f70d4088f3930350bc636cc49c9025ece7a62c292853ef55b23a6ef7b7464c7f3f2a74ae919416d6b4d9c1d6809655dd82d43d65999cf041a386e1c0f1e58849d8ed09ef07e6a9f0d7d3b8dad6cbae4668a2fd53776c3d26f88b0bf617c8112b8b1a871d322d9513491e07396e1638090055f4b8b9aa2f4ec24ebaeb917e81f468783ea771b278614cd5779a3ca50df5cc5af0edc332e2b69b2b42154bcfffd0af13ce5a467abb7fb107fe794f928da44b6db7215aa53bd0398e3403126fad1f7de2a56edfe474c5a06f8dd9bc0b3422c45a9a132e64e48fcacf63f787560c4c89701d7c125118c20a5ee820c3a16")
+
 
 # SEJ = Security Engine for JTAG protection
 
@@ -14,6 +16,13 @@ def bytes_to_dwords(buf):
     for i in range(0, len(buf) // 4):
         res.append(unpack("<I", buf[i * 4:(i * 4) + 4])[0])
     return res
+
+
+class symkey:
+    key = None
+    key_len = 0x10
+    mode = 1
+    iv = None
 
 
 AES_CBC_MODE = 1
@@ -260,95 +269,6 @@ class sej(metaclass=LogBase):
         # self.crypto_secure(1)
         return
 
-    def SEJ_Init_MTEE(self, encrypt=True, iv=None):
-        if iv is None:
-            iv = self.g_HACC_CFG_MTEE
-        acon_setting = self.HACC_AES_CHG_BO_OFF | self.HACC_AES_CBC | self.HACC_AES_128
-        if encrypt:
-            acon_setting |= self.HACC_AES_ENC
-        else:
-            acon_setting |= self.HACC_AES_DEC
-
-        # clear key
-        self.reg.HACC_AKEY0 = 0
-        self.reg.HACC_AKEY1 = 0
-        self.reg.HACC_AKEY2 = 0
-        self.reg.HACC_AKEY3 = 0
-        self.reg.HACC_AKEY4 = 0
-        self.reg.HACC_AKEY5 = 0
-        self.reg.HACC_AKEY6 = 0
-        self.reg.HACC_AKEY7 = 0
-
-        self.reg.HACC_ACON2 = self.HACC_AES_CBC
-        self.reg.HACC_ACONK = self.HACC_AES_BK2C
-        self.reg.HACC_ACONK |= 0x100
-        self.reg.HACC_ACON = self.HACC_AES_CLR
-
-        self.reg.HACC_ACFG0 = iv[0]
-        self.reg.HACC_ACFG1 = iv[1]
-        self.reg.HACC_ACFG2 = iv[2]
-        self.reg.HACC_ACFG3 = iv[3]
-
-        for val in [[0x2d44bb70,0xa744d227,0xd0a9864b,0x83ffc244],
-                    [0x7ec8266b,0x43e80fb2,0x1a6348a,0x2067f9a0],
-                    [0x54536405,0xd546a6b1,0x1cc3ec3a,0xde377a83]]:
-            self.reg.HACC_ASRC0 = val[0]
-            self.reg.HACC_ASRC1 = val[1]
-            self.reg.HACC_ASRC2 = val[2]
-            self.reg.HACC_ASRC3 = val[3]
-            self.reg.HACC_ACON2 = self.HACC_AES_START
-            i = 0
-            while i < 20:
-                if self.reg.HACC_ACON2 & self.HACC_AES_RDY != 0:
-                    break
-                i += 1
-            if i == 20:
-                self.error("SEJ Hardware seems not to be configured correctly. Results may be wrong.")
-
-        self.reg.HACC_ACON2 = self.HACC_AES_CBC
-        self.reg.HACC_ACFG0 = iv[0]
-        self.reg.HACC_ACFG1 = iv[1]
-        self.reg.HACC_ACFG2 = iv[2]
-        self.reg.HACC_ACFG3 = iv[3]
-        self.reg.HACC_ACON  = acon_setting
-        self.reg.HACC_ACONK = 0x0
-
-    def SEJ_Init(self, encrypt=True, iv=None):
-        if iv is None:
-            iv = self.g_HACC_CFG_1
-        acon_setting = self.HACC_AES_CHG_BO_OFF | self.HACC_AES_CBC | self.HACC_AES_128
-        if encrypt:
-            acon_setting |= self.HACC_AES_ENC
-        else:
-            acon_setting |= self.HACC_AES_DEC
-
-        # clear key
-        self.reg.HACC_AKEY0 = 0
-        self.reg.HACC_AKEY1 = 0
-        self.reg.HACC_AKEY2 = 0
-        self.reg.HACC_AKEY3 = 0
-        self.reg.HACC_AKEY4 = 0
-        self.reg.HACC_AKEY5 = 0
-        self.reg.HACC_AKEY6 = 0
-        self.reg.HACC_AKEY7 = 0
-        self.reg.HACC_ACFG0 = iv[0]  # g_AC_CFG
-        self.reg.HACC_ACFG1 = iv[1]
-        self.reg.HACC_ACFG2 = iv[2]
-        self.reg.HACC_ACFG3 = iv[3]
-        self.reg.HACC_UNK |= 2
-
-        # clear HACC_ASRC/HACC_ACFG/HACC_AOUT
-        self.reg.HACC_ACON2 = 0x40000000 | self.HACC_AES_CLR
-
-        while True:
-            if self.reg.HACC_ACON2 > 0x80000000:
-                break
-
-        self.reg.HACC_UNK &= 0xFFFFFFFE
-        self.reg.HACC_ACONK = self.HACC_AES_BK2C
-        self.reg.HACC_ACON = acon_setting
-        return acon_setting
-
     def SEJ_Run(self, data):
         pdst = bytearray()
         psrc = bytes_to_dwords(data)
@@ -374,6 +294,155 @@ class sej(metaclass=LogBase):
             pos += 4
         return pdst
 
+    def SEJ_AES_HW_Init(self, attr, key: symkey, sej_param=3):
+        # key.mode 0 = ECB
+        # key.mode 1 = CBC
+        if key.key is None:
+            key.key = b""
+        if attr << 31 and sej_param << 31:
+            if key.key is None:
+                return 0x6001
+        if key.iv is None and key.mode == 1:
+            return 0x6002
+
+        self.reg.HACC_SECINIT0 = 1
+        if attr & 1 == 0 or sej_param & 1 != 0:
+            acon_setting = self.HACC_AES_128
+        elif len(key.key) == 0x18:
+            acon_setting = self.HACC_AES_192
+        elif len(key.key) == 0x20:
+            acon_setting = self.HACC_AES_256
+        else:
+            acon_setting = self.HACC_AES_192
+        if key.mode:
+            acon_setting |= self.HACC_AES_CBC
+        self.reg.HACC_ACON = acon_setting
+        """
+        if m_src_addr<<30 or m_dst_addr << 30:
+            return 0x6007
+        if not m_src_len:
+            return 0x600A
+        if m_src_len != m_dst_len:
+            return 0x6000
+        if m_src_len << 29:
+            return 0x6032
+        memset(outbuf,0,0x20)
+        if attr&4 == 0:
+           CP_Power_On_SEJ_HW(1)
+        """
+
+        if attr & 1 != 0:
+            self.reg.HACC_AKEY0 = 0
+            self.reg.HACC_AKEY1 = 0
+            self.reg.HACC_AKEY2 = 0
+            self.reg.HACC_AKEY3 = 0
+            self.reg.HACC_AKEY4 = 0
+            self.reg.HACC_AKEY5 = 0
+            self.reg.HACC_AKEY6 = 0
+            self.reg.HACC_AKEY7 = 0
+            if sej_param & 1 != 0:
+                self.reg.HACC_ACONK = self.HACC_AES_BK2C
+            else:
+                keydata = [0, 0, 0, 0, 0, 0, 0, 0]
+                # toDo: Is this valid ?
+                for i in range(0, len(key.key), 4):
+                    keydata[i // 4] = unpack(">I", key.key[i:i + 4])[0]
+                if len(key.key) >= 8:
+                    self.reg.HACC_AKEY0 = keydata[0]
+                    self.reg.HACC_AKEY1 = keydata[1]
+                if len(key.key) >= 16:
+                    self.reg.HACC_AKEY2 = keydata[2]
+                    self.reg.HACC_AKEY3 = keydata[3]
+                if len(key.key) >= 24:
+                    self.reg.HACC_AKEY4 = keydata[4]
+                    self.reg.HACC_AKEY5 = keydata[5]
+                if len(key.key) >= 32:
+                    self.reg.HACC_AKEY6 = keydata[6]
+                    self.reg.HACC_AKEY7 = keydata[7]
+        if attr & 2 != 0:
+            self.reg.HACC_ACON2 = self.HACC_AES_CLR
+            self.reg.HACC_ACFG0 = key.iv[0]  # g_AC_CFG
+            self.reg.HACC_ACFG1 = key.iv[1]
+            self.reg.HACC_ACFG2 = key.iv[2]
+            self.reg.HACC_ACFG3 = key.iv[3]
+
+    def SEJ_AES_HW_Internal(self, data, encrypt, attr, sej_param, legacy=True):
+        if encrypt:
+            self.reg.HACC_ACON |= 1
+        if legacy:
+            if (attr & 8) != 0 and (sej_param & 2) != 0:
+                self.reg.HACC_ACONK |= self.HACC_AES_R2K
+            else:
+                self.reg.HACC_ACONK &= 0xFFFFFEFF
+        pdst = bytearray()
+        psrc = bytes_to_dwords(data)
+        plen = len(psrc)
+        pos = 0
+        for i in range(plen // 4):
+            self.reg.HACC_ASRC0 = psrc[pos + 0]
+            self.reg.HACC_ASRC1 = psrc[pos + 1]
+            self.reg.HACC_ASRC2 = psrc[pos + 2]
+            self.reg.HACC_ASRC3 = psrc[pos + 3]
+            self.reg.HACC_ACON2 = self.HACC_AES_START
+            i = 0
+            while i < 20:
+                if self.reg.HACC_ACON2 & self.HACC_AES_RDY != 0:
+                    break
+                i += 1
+            if i == 20:
+                self.error("SEJ Hardware seems not to be configured correctly. Results may be wrong.")
+            pdst.extend(pack("<I", self.reg.HACC_AOUT0))
+            pdst.extend(pack("<I", self.reg.HACC_AOUT1))
+            pdst.extend(pack("<I", self.reg.HACC_AOUT2))
+            pdst.extend(pack("<I", self.reg.HACC_AOUT3))
+            pos += 4
+        if legacy:
+            if (attr & 8) != 0 and (sej_param & 2) == 0:
+                # Key_Feedback_XOR_Handler
+                keylen = 0x20
+                for pos in range(keylen // 4):
+                    self.reg.HACC_AKEY0[pos] = pdst[pos] ^ self.reg.HACC_AKEY0[pos]
+        return pdst
+
+    def SST_Secure_Algo_With_Level(self, buf, encrypt=True, aes_top_legacy=True):
+        seed = (CustomSeed[2] << 16) | (CustomSeed[1] << 8) | CustomSeed[0] | (CustomSeed[3] << 24)
+        iv = [seed, (~seed) & 0xFFFFFFFF, (((seed >> 16) | (seed << 16)) & 0xFFFFFFFF),
+                    (~((seed >> 16) | (seed << 16)) & 0xFFFFFFFF)]
+        key = symkey()
+        key.key = None
+        key.key_len = 0x10
+        key.mode = 1      # CBC
+        key.iv = iv
+        if aes_top_legacy:
+            sej_param = 3
+        else:
+            sej_param = 5
+        # Cipher Internal
+        if sej_param & 0xC != 0:
+            if sej_param & 4 != 0:
+                # sej_param 5
+                attr = 0x3A
+            else:
+                attr = 0x32
+            flag = 1
+        else:
+            # aes_top_legacy
+            attr = 0x33
+            flag = 0
+        metaflag = not flag
+        # CS_MTK_Cipher_Internal
+        if metaflag:
+            # length=0x10
+            attr = 0x5B
+            self.SEJ_AES_HW_Init(attr, key, sej_param)
+            for pos in range(3):
+                src = b"".join([int.to_bytes(val,4,'little') for val in self.g_CFG_RANDOM_PATTERN])
+                buf2 = self.SEJ_AES_HW_Internal(src, encrypt=False, attr=attr, sej_param=sej_param)
+            attr = attr & 0xFFFFFFFA | 4
+            self.SEJ_AES_HW_Init(attr, key, sej_param)
+        buf2 = self.SEJ_AES_HW_Internal(buf, encrypt=encrypt, attr=attr, sej_param=sej_param)
+        return buf2
+
     def SEJ_Terminate(self):
         self.reg.HACC_ACON2 = self.HACC_AES_CLR
         self.reg.HACC_AKEY0 = 0
@@ -385,10 +454,10 @@ class sej(metaclass=LogBase):
         self.reg.HACC_AKEY6 = 0
         self.reg.HACC_AKEY7 = 0
 
-    def SEJ_V3_Init(self, ben=True, iv=None):
-        if iv is None:
-            iv = self.g_HACC_CFG_1
-        acon_setting = self.HACC_AES_CHG_BO_OFF | self.HACC_AES_CBC | self.HACC_AES_128
+    def SEJ_V3_Init(self, ben=True, iv=None, legacy=False):
+        acon_setting = self.HACC_AES_CHG_BO_OFF | self.HACC_AES_128
+        if iv is not None:
+            acon_setting |= self.HACC_AES_CBC
         if ben:
             acon_setting |= self.HACC_AES_ENC
         else:
@@ -413,34 +482,52 @@ class sej(metaclass=LogBase):
 
         # clear HACC_ASRC/HACC_ACFG/HACC_AOUT
         self.reg.HACC_ACON2 = self.HACC_AES_CLR  # 0x08
-        self.reg.HACC_UNK = 1
+        #self.reg.HACC_UNK = 1
         self.reg.HACC_ACFG0 = iv[0]  # g_AC_CFG
         self.reg.HACC_ACFG1 = iv[1]
         self.reg.HACC_ACFG2 = iv[2]
         self.reg.HACC_ACFG3 = iv[3]
 
-        # encrypt fix pattern 3 rounds to generate a pattern from HUID/HUK
-        for i in range(0, 3):
-            pos = i * 4
-            self.reg.HACC_ASRC0 = self.g_CFG_RANDOM_PATTERN[pos]
-            self.reg.HACC_ASRC1 = self.g_CFG_RANDOM_PATTERN[pos + 1]
-            self.reg.HACC_ASRC2 = self.g_CFG_RANDOM_PATTERN[pos + 2]
-            self.reg.HACC_ASRC3 = self.g_CFG_RANDOM_PATTERN[pos + 3]
-            self.reg.HACC_ACON2 = self.HACC_AES_START
-            i = 0
-            while i < 20:
-                if self.reg.HACC_ACON2 & self.HACC_AES_RDY != 0:
+        if legacy:
+            self.reg.HACC_UNK |= 2
+            # clear HACC_ASRC/HACC_ACFG/HACC_AOUT
+            self.reg.HACC_ACON2 = 0x40000000 | self.HACC_AES_CLR
+            while True:
+                if self.reg.HACC_ACON2 > 0x80000000:
                     break
-                i += 1
-            if i == 20:
-                self.error("SEJ Hardware seems not to be configured correctly. Results may be wrong.")
-        self.reg.HACC_ACON2 = self.HACC_AES_CLR
-        self.reg.HACC_ACFG0 = iv[0]
-        self.reg.HACC_ACFG1 = iv[1]
-        self.reg.HACC_ACFG2 = iv[2]
-        self.reg.HACC_ACFG3 = iv[3]
-        self.reg.HACC_ACON = acon_setting
-        self.reg.HACC_ACONK = 0
+
+            self.reg.HACC_UNK &= 0xFFFFFFFE
+            self.reg.HACC_ACONK = self.HACC_AES_BK2C
+            self.reg.HACC_ACON = acon_setting
+        else:
+            # The reg below needed for mtee ?
+            self.reg.HACC_UNK = 1
+
+            # encrypt fix pattern 3 rounds to generate a pattern from HUID/HUK
+            for i in range(0, 3):
+                pos = i * 4
+                self.reg.HACC_ASRC0 = self.g_CFG_RANDOM_PATTERN[pos]
+                self.reg.HACC_ASRC1 = self.g_CFG_RANDOM_PATTERN[pos + 1]
+                self.reg.HACC_ASRC2 = self.g_CFG_RANDOM_PATTERN[pos + 2]
+                self.reg.HACC_ASRC3 = self.g_CFG_RANDOM_PATTERN[pos + 3]
+                self.reg.HACC_ACON2 = self.HACC_AES_START
+                i = 0
+                while i < 20:
+                    if self.reg.HACC_ACON2 & self.HACC_AES_RDY != 0:
+                        break
+                    i += 1
+                if i == 20:
+                    self.error("SEJ Hardware seems not to be configured correctly. Results may be wrong.")
+
+            self.reg.HACC_ACON2 = self.HACC_AES_CLR
+
+            self.reg.HACC_ACFG0 = iv[0]
+            self.reg.HACC_ACFG1 = iv[1]
+            self.reg.HACC_ACFG2 = iv[2]
+            self.reg.HACC_ACFG3 = iv[3]
+            self.reg.HACC_ACON = acon_setting
+            self.reg.HACC_ACONK = 0
+        return acon_setting
 
     def hw_aes128_cbc_encrypt(self, buf, encrypt=True, iv=None):
         if iv is None:
@@ -448,19 +535,6 @@ class sej(metaclass=LogBase):
         self.tz_pre_init()
         self.info("HACC init")
         self.SEJ_V3_Init(ben=encrypt, iv=iv)
-        self.info("HACC run")
-        buf2 = self.SEJ_Run(buf)
-        self.info("HACC terminate")
-        self.SEJ_Terminate()
-        return buf2
-
-    def hw_aes128_sst_encrypt(self, buf, encrypt=True):
-        seed = (CustomSeed[2]<<16) | (CustomSeed[1]<<8) | CustomSeed[0] | (CustomSeed[3]<<24)
-        iv = [seed,(~seed)&0xFFFFFFFF,(((seed>>16)|(seed<<16))&0xFFFFFFFF),(~((seed>>16)|(seed<<16))&0xFFFFFFFF)]
-
-        self.tz_pre_init()
-        self.info("HACC init")
-        self.SEJ_Init(encrypt=encrypt, iv=iv)
         self.info("HACC run")
         buf2 = self.SEJ_Run(buf)
         self.info("HACC terminate")
@@ -526,10 +600,13 @@ class sej(metaclass=LogBase):
         self.sej_set_key(AES_HW_WRAP_KEY, AES_KEY_256, hw_key)
 
     def sej_sec_cfg_sw(self, data, encrypt=True):
-        self.sej_set_mode(AES_CBC_MODE)
-        self.sej_set_key(AES_SW_KEY, AES_KEY_256, b"1A52A367CB12C458965D32CD874B36B2")
-        iv = bytes.fromhex("57325A5A125497661254976657325A5A")
-        res = self.sej_do_aes(encrypt, iv, data, len(data))
+        #self.sej_set_mode(AES_CBC_MODE)
+        #self.sej_set_key(AES_SW_KEY, AES_KEY_256, b"1A52A367CB12C458965D32CD874B36B2")
+        #iv = bytes.fromhex("57325A5A125497661254976657325A5A")
+        #res = self.sej_do_aes(encrypt, iv, data, len(data))
+        ctx = cryptutils.aes()
+        res = ctx.aes_cbc(key=b"25A1763A21BC854CD569DC23B4782B63",
+                          iv=bytes.fromhex("57325A5A125497661254976657325A5A"), data=data)
         return res
 
     def xor_data(self, data):
@@ -545,7 +622,7 @@ class sej(metaclass=LogBase):
         if encrypt:
             data = self.xor_data(bytearray(data))
         self.info("HACC init")
-        self.SEJ_Init(encrypt=encrypt)
+        self.SEJ_V3_Init(ben=encrypt,iv=self.g_HACC_CFG_1,legacy=True)
         self.info("HACC run")
         dec = self.SEJ_Run(data)
         self.info("HACC terminate")
@@ -623,9 +700,23 @@ class sej(metaclass=LogBase):
         if otp is not None:
             self.sej_set_otp(otp)
         self.info("HACC init")
-        self.SEJ_Init_MTEE(encrypt=True)
+        self.SEJ_V3_Init(ben=True, iv=self.g_HACC_CFG_MTEE)
         self.info("HACC run")
         dec = self.SEJ_Run(bytes.fromhex("7777772E6D6564696174656B2E636F6D30313233343536373839414243444546"))
+        self.info("HACC terminate")
+        self.SEJ_Terminate()
+        return dec
+
+    def generate_hw_meta(self, otp=None, encrypt=False, data=b""):
+        if otp is not None:
+            self.sej_set_otp(otp)
+        seed = (CustomSeed[2] << 16) | (CustomSeed[1] << 8) | CustomSeed[0] | (CustomSeed[3] << 24)
+        iv = [seed, (~seed) & 0xFFFFFFFF, (((seed >> 16) | (seed << 16)) & 0xFFFFFFFF),
+                    (~((seed >> 16) | (seed << 16)) & 0xFFFFFFFF)]
+        self.info("HACC init")
+        self.SEJ_V3_Init(ben=encrypt, iv=iv)
+        self.info("HACC run")
+        dec = self.SEJ_Run(data)
         self.info("HACC terminate")
         self.SEJ_Terminate()
         return dec

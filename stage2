@@ -444,25 +444,25 @@ class Stage2(metaclass=LogBase):
             retval["rpmbkey"] = hexlify(rpmbkey).decode('utf-8')
             return retval, keyinfo
         if mode == "sej_aes_decrypt":
-            dec_data = self.hwcrypto.aes_hwcrypt(mode="cbc", data=data, btype="sej", encrypt=False)
+            dec_data = self.hwcrypto.aes_hwcrypt(mode="cbc", data=data, btype="sej", encrypt=False, otp=otp)
             keyinfo+="\n"
             keyinfo+="Data: " + hexlify(dec_data).decode('utf-8')
             keyinfo+="\n"
             return dec_data, keyinfo
         elif mode == "sej_aes_encrypt":
-            enc_data = self.hwcrypto.aes_hwcrypt(mode="cbc", data=data, btype="sej", encrypt=True)
+            enc_data = self.hwcrypto.aes_hwcrypt(mode="cbc", data=data, btype="sej", encrypt=True, otp=otp)
             keyinfo+="\n"
             keyinfo+="Data: " + hexlify(enc_data).decode('utf-8')
             keyinfo+="\n"
             return enc_data, keyinfo
         elif mode == "sej_sst_decrypt":
-            dec_data = self.hwcrypto.aes_hwcrypt(mode="sst", data=data, btype="sej", encrypt=False)
+            dec_data = self.hwcrypto.aes_hwcrypt(mode="sst", data=data, btype="sej", encrypt=False, otp=otp)
             keyinfo+="\n"
             keyinfo+="Data: " + hexlify(dec_data).decode('utf-8')
             keyinfo+="\n"
             return dec_data, keyinfo
         elif mode == "sej_sst_encrypt":
-            enc_data = self.hwcrypto.aes_hwcrypt(mode="sst", data=data, btype="sej", encrypt=True)
+            enc_data = self.hwcrypto.aes_hwcrypt(mode="sst", data=data, btype="sej", encrypt=True, otp=otp)
             keyinfo += "\n"
             keyinfo += "Data: " + hexlify(enc_data).decode('utf-8')
             keyinfo += "\n"

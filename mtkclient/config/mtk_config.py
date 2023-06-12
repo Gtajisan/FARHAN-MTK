@@ -66,6 +66,7 @@ class Mtk_Config(metaclass=LogBase):
         self.hwparam_path = "logs"
         self.sram = None
         self.dram = None
+        self.otp = None
         if loglevel == logging.DEBUG:
             logfilename = os.path.join("logs", "log.txt")
             fh = logging.FileHandler(logfilename)
@@ -107,6 +108,22 @@ class Mtk_Config(metaclass=LogBase):
         self.hwparam = hwparam(meid, self.hwparam_path)
         self.meid = meid
         self.hwparam.writesetting("meid", hexlify(meid).decode('utf-8'))
+
+    def get_otp(self):
+        if self.otp is None:
+            self.otp = self.hwparam.loadsetting("otp")
+        if self.preloader is not None:
+            idx = self.preloader.find(b"\x4D\x4D\x4D\x01\x30")
+            if idx != -1:
+                self.otp = self.preloader[idx + 0xC:idx + 0xC + 32]
+                self.hwparam.writesetting("otp",hexlify(self.otp).decode('utf-8'))
+        if self.otp is None:
+            self.otp = 32 * b"\x00"
+        return self.otp
+
+    def set_otp(self,otp):
+        self.otp = otp
+        self.hwparam.writesetting("otp",hexlify(otp).decode('utf-8'))
 
     def get_meid(self):
         if self.meid is None:

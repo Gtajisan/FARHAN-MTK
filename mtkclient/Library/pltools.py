@@ -288,13 +288,13 @@ class PLTools(metaclass=LogBase):
         self.error("Error on dumping Bootrom.")
         return False
 
-    def run_crypto(self, data, iv, btype="sej", encrypt=True):
+    def run_crypto(self, data, iv, btype="sej", encrypt=True, otp=None):
         if data is None:
             data = bytearray()
         for i in range(32):
             data.append(self.config.meid[i % len(self.config.meid)])
         if btype == "":
-            encrypted = self.hwcrypto.aes_hwcrypt(data=data, iv=iv, encrypt=encrypt, btype=btype)
+            encrypted = self.hwcrypto.aes_hwcrypt(data=data, iv=iv, encrypt=encrypt, btype=btype, otp=otp)
             return encrypted
         return False
 

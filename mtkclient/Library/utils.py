@@ -29,8 +29,6 @@ except ImportError:
 from struct import unpack, pack
 from io import BytesIO
 
-from io import BytesIO
-
 class mtktee:
     magic = None
     hdrlen = None
@@ -805,7 +803,7 @@ def write_object(definition, *args):
     return obj
 
 
-def print_progress(iteration, total, prefix='', suffix='', decimals=1, bar_length=100):
+def print_progress(iteration, total, prefix='', suffix='', decimals=1, bar_length=50):
     """
     Call in a loop to create terminal progress bar
     @params:
