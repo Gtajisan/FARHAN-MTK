@@ -62,6 +62,8 @@ class DeviceHandler(QObject):
                             update_status_text=self.update_status_text)
         config.gpt_settings = gpt_settings(gpt_num_part_entries='0', gpt_part_entry_size='0',
                                            gpt_part_entry_start_lba='0')  # This actually sets the right GPT settings..
+        config.reconnect = True
+        config.uartloglevel = 2
         self.loglevel = logging.DEBUG
         self.da_handler = DA_handler(Mtk(config=config, loglevel=logging.INFO), loglevel)
 
