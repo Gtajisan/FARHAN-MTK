@@ -1524,9 +1524,14 @@ class DALegacy(metaclass=LogBase):
         length, parttype = self.get_parttype(length, parttype)
         storage = self.get_storage()
         fh = False
-
+        fill = 0
         if filename is not None:
             fh = open(filename, "rb")
+            fsize = os.stat(filename).st_size
+            length = min(fsize, length)
+            if length % 512 != 0:
+                fill = 512 - (length % 512)
+                length += fill
             fh.seek(offset)
         self.mtk.daloader.progress.show_progress("Write", 0, length, display)
         self.usbwrite(self.Cmd.SDMMC_WRITE_DATA_CMD)
@@ -1544,6 +1549,8 @@ class DALegacy(metaclass=LogBase):
             count = min(0x100000, length - offset)
             if fh:
                 data = bytearray(fh.read(count))
+                if len(data) < count:
+                    data.extend(b"\x00" * fill)
             else:
                 data = wdata[offset:offset + count]
             self.usbwrite(data)
