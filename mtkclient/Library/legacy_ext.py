@@ -177,29 +177,18 @@ class legacyext(metaclass=LogBase):
                 break
         if seccfg_data is None:
             return False, "Couldn't detect existing seccfg partition. Aborting unlock."
+        hwc = self.cryptosetup()
         if seccfg_data[:0xC] == b"AND_SECCFG_v":
+            self.info("Detected V3 Lockstate")
             sc_org = seccfgV3(hwc, self.mtk)
-            if not sc_org.parse(seccfg_data):
-                return False, "V3 Device has is either already unlocked or algo is unknown. Aborting."
-            writedata = sc_org.create(lockflag)
         else:
-            sc_org = seccfgV4(hwc,self.mtk)
-            if not sc_org.parse(seccfg_data):
-                return False, "Error on parsing seccfg."
-            sc_new = seccfgV4(hwc,self.mtk)
-            self.setotp(hwc)
-            hwtype = "hw"
-            V3 = True
-            sc_new.create(sc_org=sc_org, hwtype=hwtype, V3=V3)
-            if sc_org.hash != sc_new.hash:
-                V3=False
-                sc_new.create(sc_org=sc_org, hwtype=hwtype, V3=V3)
-            if sc_org.hash != sc_new.hash:
-                hwtype = "sw"
-                sc_new.create(sc_org=sc_org, hwtype=hwtype)
-                if sc_org.hash != sc_new.hash:
-                    return False, "Device has is either already unlocked or algo is unknown. Aborting."
-            writedata = sc_new.create(sc_org=None, hwtype=hwtype, lockflag=lockflag, V3=V3)
+            self.info("Detected V4 Lockstate")
+            sc_org = seccfgV4(hwc, self.mtk)
+        if not sc_org.parse(seccfg_data):
+            return False, "Device has is either already unlocked or algo is unknown. Aborting."
+        writedata = sc_org.create(lockflag=lockflag)
+        if writedata is None:
+            return False, "Error on creating seccfg, bad lock state"
         if self.legacy.writeflash(addr=partition.sector * self.mtk.daloader.daconfig.pagesize,
                                   length=len(writedata),
                                   filename=None, wdata=writedata, parttype="user", display=True):

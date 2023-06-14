@@ -14,6 +14,7 @@ class seccfgV4(metaclass=LogBase):
         self.info = self.__logger.info
         self.error = self.__logger.error
         self.warning = self.__logger.warning
+        self.hwtype = None
         self.hwc = hwc
         self.mtk = mtk
         self.magic = 0x4D4D4D4D
@@ -46,6 +47,22 @@ class seccfgV4(metaclass=LogBase):
         if self.magic != 0x4D4D4D4D or self.endflag != 0x45454545:
             self.error("Unknown V4 seccfg structure !")
             return False
+        seccfg_data = pack("<IIIIIII", self.magic, self.seccfg_ver, self.seccfg_size, self.lock_state,
+                           self.critical_lock_state, self.sboot_runtime, 0x45454545)
+        hash = hashlib.sha256(seccfg_data).digest()
+        dec_hash = self.hwc.sej.sej_sec_cfg_sw(self.hash, False)
+        if hash == dec_hash:
+            self.hwtype = "SW"
+        else:
+            dec_hash = self.hwc.sej.sej_sec_cfg_hw(self.hash, False)
+            if hash == dec_hash:
+                self.hwtype = "V2"
+            else:
+                dec_hash = self.hwc.sej.sej_sec_cfg_hw_V3(self.hash, False)
+                if hash == dec_hash:
+                    self.hwtype = "V3"
+                else:
+                    return False
         return True
 
         """
@@ -61,37 +78,29 @@ class seccfgV4(metaclass=LogBase):
         SBOOT_RUNTIME_ON  = 1
         """
 
-    def create(self, sc_org, hwtype: str, lockflag: str = "unlock", V3=False):
-        if sc_org is None:
-            if lockflag == "unlock":
-                self.lock_state = 3
-                self.critical_lock_state = 1
-                self.seccfg_ver = 4
-                self.seccfg_size = 0x3C
-                self.sboot_runtime = 0
-            elif lockflag == "lock":
-                self.lock_state = 1
-                self.critical_lock_state = 0
-                self.seccfg_ver = 4
-                self.seccfg_size = 0x3C
-                self.sboot_runtime = 0
-        else:
-            self.lock_state = sc_org.lock_state
-            self.critical_lock_state = sc_org.critical_lock_state
-            self.seccfg_size = sc_org.seccfg_size
-            self.sboot_runtime = sc_org.sboot_runtime
-            self.seccfg_ver = sc_org.seccfg_ver
+    def create(self, lockflag: str = "unlock"):
+        if lockflag == "lock" and self.lock_state == 1:
+            self.error("Device is already locked")
+            return None
+        elif lockflag == "unlock" and self.lock_state == 3:
+            self.error("Device is already unlocked")
+            return None
+        if lockflag == "unlock":
+            self.lock_state = 3
+            self.critical_lock_state = 1
+        elif lockflag == "lock":
+            self.lock_state = 1
+            self.critical_lock_state = 0
         seccfg_data = pack("<IIIIIII", self.magic, self.seccfg_ver, self.seccfg_size, self.lock_state,
                            self.critical_lock_state, self.sboot_runtime, 0x45454545)
         dec_hash = hashlib.sha256(seccfg_data).digest()
-        if hwtype == "sw":
+        enc_hash = b""
+        if self.hwtype == "SW":
             enc_hash = self.hwc.sej.sej_sec_cfg_sw(dec_hash, True)
-        else:
-            if not V3:
-                enc_hash = self.hwc.sej.sej_sec_cfg_hw(dec_hash, True)
-            else:
-                enc_hash = self.hwc.sej.sej_sec_cfg_hw_V3(dec_hash, True)
-        self.hash = enc_hash
+        elif self.hwtype == "V2":
+            enc_hash = self.hwc.sej.sej_sec_cfg_hw(dec_hash, True)
+        elif self.hwtype == "V3":
+            enc_hash = self.hwc.sej.sej_sec_cfg_hw_V3(dec_hash, True)
         data = seccfg_data + enc_hash
         while len(data) % 0x200 != 0:
             data += b"\x00"
@@ -271,6 +280,8 @@ class seccfgV3(metaclass=LogBase):
             data = self.hwc.sej.sej_sec_cfg_hw(data, True)
         elif self.hwtype == "V3":
             data = self.hwc.sej.sej_sec_cfg_hw_V3(data, True)
+        else:
+            return None
         wf.write(data)
         wf.write(int.to_bytes(self.endflag, 4, 'little'))
 
