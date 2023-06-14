@@ -243,7 +243,6 @@ class seccfgV3(metaclass=LogBase):
             self.seccfg_enc_len = 0x01000000
             seccfg_attr_new = SECCFG_ATTR.ATTR_DEFAULT
 
-        """
         if lockflag == "lock" and self.seccfg_attr != SECCFG_ATTR.ATTR_UNLOCK:
             return False, ("Can't find lock state, current (%#x)" % self.seccfg_attr)
         elif lockflag == "unlock" and self.seccfg_attr != SECCFG_ATTR.ATTR_DEFAULT \
@@ -252,7 +251,7 @@ class seccfgV3(metaclass=LogBase):
                 and self.seccfg_attr != SECCFG_ATTR.ATTR_VERIFIED \
                 and self.seccfg_attr != SECCFG_ATTR.ATTR_LOCK:
             return False, ("Can't find unlock state, current (%#x)" % self.seccfg_attr)
-        """
+
         data = bytearray()
         wf = BytesIO(data)
         wf.write(self.info)
