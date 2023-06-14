@@ -140,6 +140,7 @@ class sej(metaclass=LogBase):
         0xDE377A83
     ]
 
+
     g_HACC_CFG_1 = [
         0x9ED40400, 0x00E884A1, 0xE3F083BD, 0x2F4E6D8A,
         0xFF838E5C, 0xE940A0E3, 0x8D4DECC6, 0x45FC0989
@@ -161,15 +162,15 @@ class sej(metaclass=LogBase):
 
     def __init__(self, setup, loglevel=logging.INFO):
         self.__logger = self.__logger
+        self.info = self.__logger.info
+        self.error = self.__logger.error
+        self.warning = self.__logger.warning
         self.hwcode = setup.hwcode
         self.reg = hacc_reg(setup)
         # mediatek,hacc, mediatek,sej
         self.sej_base = setup.sej_base
         self.read32 = setup.read32
         self.write32 = setup.write32
-        self.info = self.__logger.info
-        self.error = self.__logger.error
-        self.warning = self.__logger.warning
         if loglevel == logging.DEBUG:
             logfilename = os.path.join("logs", "log.txt")
             fh = logging.FileHandler(logfilename, encoding='utf-8')
@@ -482,7 +483,7 @@ class sej(metaclass=LogBase):
 
         # clear HACC_ASRC/HACC_ACFG/HACC_AOUT
         self.reg.HACC_ACON2 = self.HACC_AES_CLR  # 0x08
-        #self.reg.HACC_UNK = 1
+
         self.reg.HACC_ACFG0 = iv[0]  # g_AC_CFG
         self.reg.HACC_ACFG1 = iv[1]
         self.reg.HACC_ACFG2 = iv[2]

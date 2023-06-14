@@ -1,13 +1,19 @@
-from struct import unpack, pack
-from mtkclient.Library.utils import structhelper_io
-from io import BytesIO
+from struct import pack
+import os
 import hashlib
-
+import logging
+from io import BytesIO
+from mtkclient.Library.utils import structhelper_io
+from mtkclient.Library.utils import LogBase
 from mtkclient.config.mtk_config import Mtk_Config
 
 
-class seccfgV4:
-    def __init__(self, hwc, mtk):
+class seccfgV4(metaclass=LogBase):
+    def __init__(self, hwc, mtk, loglevel=logging.INFO):
+        self.__logger = self.__logger
+        self.info = self.__logger.info
+        self.error = self.__logger.error
+        self.warning = self.__logger.warning
         self.hwc = hwc
         self.mtk = mtk
         self.magic = 0x4D4D4D4D
@@ -18,6 +24,13 @@ class seccfgV4:
         self.sboot_runtime = None
         self.endflag = 0x45454545
         self.hash = b""
+        if loglevel == logging.DEBUG:
+            logfilename = os.path.join("logs", "log.txt")
+            fh = logging.FileHandler(logfilename, encoding='utf-8')
+            self.__logger.addHandler(fh)
+            self.__logger.setLevel(logging.DEBUG)
+        else:
+            self.__logger.setLevel(logging.INFO)
 
     def parse(self, data):
         rf = structhelper_io(BytesIO(bytearray(data)))
@@ -118,8 +131,12 @@ class SEC_IMG_ATTR:
     ATTR_SEC_IMG_FORCE_UPDATE = 0x46464646  # FFFF
 
 
-class seccfgV3:
-    def __init__(self, hwc, mtk):
+class seccfgV3(metaclass=LogBase):
+    def __init__(self, hwc, mtk, loglevel=logging.INFO):
+        self.__logger = self.__logger
+        self.info = self.__logger.info
+        self.error = self.__logger.error
+        self.warning = self.__logger.warning
         self.hwtype = None
         self.data = None
         self.org_data = None
@@ -143,6 +160,13 @@ class seccfgV3:
         self.seccfg_ext = b"\x00" * 0x1004
         if self.hwc.read32 is not None:
             self.setotp(hwc)
+        if loglevel == logging.DEBUG:
+            logfilename = os.path.join("logs", "log.txt")
+            fh = logging.FileHandler(logfilename, encoding='utf-8')
+            self.__logger.addHandler(fh)
+            self.__logger.setLevel(logging.DEBUG)
+        else:
+            self.__logger.setLevel(logging.INFO)
 
     def setotp(self, hwc):
         otp = None
