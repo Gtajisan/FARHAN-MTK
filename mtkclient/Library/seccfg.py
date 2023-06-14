@@ -207,11 +207,11 @@ class seccfgV3(metaclass=LogBase):
             self.error("Unknown V3 seccfg structure !")
             return False
         ret = self.hwc.sej.sej_sec_cfg_sw(self.data, False)
-        if ret[:4] != b"IIII":
+        if ret[:4] not in [b"IIII",b"CCCC",b"\x00\x00\x00\x00"]:
             ret = self.hwc.sej.sej_sec_cfg_hw_V3(self.data, False)
-            if ret[:4] != b"IIII":
+            if ret[:4] not in [b"IIII",b"CCCC",b"\x00\x00\x00\x00"]:
                 ret = self.hwc.sej.sej_sec_cfg_hw(self.data, False)
-                if ret[:4] != b"IIII":
+                if ret[:4] not in [b"IIII",b"CCCC",b"\x00\x00\x00\x00"]:
                     self.error("Unknown V3 seccfg encryption !")
                     return False
                 else:
