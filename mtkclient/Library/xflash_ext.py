@@ -524,9 +524,11 @@ class xflashext(metaclass=LogBase):
         if seccfg_data[:0xC] == b"AND_SECCFG_v":
             self.info("Detected V3 Lockstate")
             sc_org = seccfgV3(hwc, self.mtk)
-        else:
+        elif seccfg_data[:4] == b"\x4D\x4D\x4D\x4D":
             self.info("Detected V4 Lockstate")
             sc_org = seccfgV4(hwc, self.mtk)
+        else:
+            return False, "Unknown lockstate or no lockstate"
         if not sc_org.parse(seccfg_data):
             return False, "Device has is either already unlocked or algo is unknown. Aborting."
         writedata = sc_org.create(lockflag=lockflag)

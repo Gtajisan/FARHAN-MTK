@@ -1785,7 +1785,8 @@ class DALegacy(metaclass=LogBase):
         else:
             buffer = bytearray()
             bytestoread = length
-            self.mtk.daloader.progress.show_progress("Read", 0, length, display)
+            if display:
+                self.mtk.daloader.progress.show_progress("Read", 0, length, display)
             while bytestoread > 0:
                 size = bytestoread
                 if bytestoread > packetsize:
@@ -1799,6 +1800,8 @@ class DALegacy(metaclass=LogBase):
                     rpos = length - bytestoread
                 else:
                     rpos = 0
-                self.mtk.daloader.progress.show_progress("Read", rpos, length, display)
-            self.mtk.daloader.progress.show_progress("Read", length, length, display)
+                if display:
+                    self.mtk.daloader.progress.show_progress("Read", rpos, length, display)
+            if display:
+                self.mtk.daloader.progress.show_progress("Read", length, length, display)
             return buffer
