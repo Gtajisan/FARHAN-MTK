@@ -492,10 +492,13 @@ class sej(metaclass=LogBase):
             self.reg.HACC_UNK |= 2
             # clear HACC_ASRC/HACC_ACFG/HACC_AOUT
             self.reg.HACC_ACON2 = 0x40000000 | self.HACC_AES_CLR
-            while True:
+            i = 0
+            while i < 20:
                 if self.reg.HACC_ACON2 > 0x80000000:
                     break
-
+                i += 1
+            if i == 20:
+                self.error("SEJ Legacy Hardware seems not to be configured correctly. Results may be wrong.")
             self.reg.HACC_UNK &= 0xFFFFFFFE
             self.reg.HACC_ACONK = self.HACC_AES_BK2C
             self.reg.HACC_ACON = acon_setting

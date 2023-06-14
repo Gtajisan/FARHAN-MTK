@@ -175,9 +175,9 @@ class seccfgV3:
             return False
         ret = self.hwc.sej.sej_sec_cfg_sw(self.data, False)
         if ret[:4] != b"IIII":
-            ret = self.hwc.sej.sej_sec_cfg_hw(self.data, False)
+            ret = self.hwc.sej.sej_sec_cfg_hw_V3(self.data, False)
             if ret[:4] != b"IIII":
-                ret = self.hwc.sej.sej_sec_cfg_hw_V3(self.data, False)
+                ret = self.hwc.sej.sej_sec_cfg_hw(self.data, False)
                 if ret[:4] != b"IIII":
                     self.error("Unknown V3 seccfg encryption !")
                     return False
