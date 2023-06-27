@@ -583,8 +583,9 @@ class xflashext(metaclass=LogBase):
         cid = self.config.get_cid()
         otp = self.config.get_otp()
         retval = {}
-        #data=hwc.aes_hwcrypt(data=bytes.fromhex("F6 25 25 AD 0C A4 3A AA CC EF 93 1F 2D C2 A3 EE"), mode="sst", btype="sej",
-        #                encrypt=True)
+        #data=hwc.aes_hwcrypt(data=bytes.fromhex("F2 97 D2 2C 29 05 26 6B 75 0D 2C DA AE 6B 95 A5 99 0B 8A 58 7F EC 01 1A 99 A5 1F 40 25 C3 24 96 84 2D ED 71 BD 4D 7E CD D3 2A 6C DF B5 59 41 04 64 9C 09 4A D6 65 03 89 14 C3 2F A7 18 87 41 13"), mode="sst", btype="sej",
+        #                encrypt=False)
+        #self.info(data.hex())
         if meid is not None:
             self.info("MEID        : " + hexlify(meid).decode('utf-8'))
             retval["meid"] = hexlify(meid).decode('utf-8')

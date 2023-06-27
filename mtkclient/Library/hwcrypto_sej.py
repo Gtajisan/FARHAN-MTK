@@ -438,7 +438,7 @@ class sej(metaclass=LogBase):
             self.SEJ_AES_HW_Init(attr, key, sej_param)
             for pos in range(3):
                 src = b"".join([int.to_bytes(val,4,'little') for val in self.g_CFG_RANDOM_PATTERN])
-                buf2 = self.SEJ_AES_HW_Internal(src, encrypt=False, attr=attr, sej_param=sej_param)
+                buf2 = self.SEJ_AES_HW_Internal(src, encrypt=True, attr=attr, sej_param=sej_param)
             attr = attr & 0xFFFFFFFA | 4
             self.SEJ_AES_HW_Init(attr, key, sej_param)
         buf2 = self.SEJ_AES_HW_Internal(buf, encrypt=encrypt, attr=attr, sej_param=sej_param)
@@ -729,3 +729,11 @@ class sej(metaclass=LogBase):
         self.info("HACC terminate")
         self.SEJ_Terminate()
         return dec
+
+
+if __name__ == "__main__":
+    CustomSeed = int.to_bytes(0x12345678,4,'little')
+    seed = (CustomSeed[2] << 16) | (CustomSeed[1] << 8) | CustomSeed[0] | (CustomSeed[3] << 24)
+    iv = [seed, (~seed) & 0xFFFFFFFF, (((seed >> 16) | (seed << 16)) & 0xFFFFFFFF),
+          (~((seed >> 16) | (seed << 16)) & 0xFFFFFFFF)]
+    print(b"".join(int.to_bytes(val,4,'little') for val in iv).hex())

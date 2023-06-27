@@ -742,7 +742,8 @@ hwconfig = {
         damode=damodes.XFLASH,
         dacode=0x6755,
         name="MT6750"),
-    0x6752: chipconfig(  # var1
+    0x6752: chipconfig(
+        var1=0x28,
         watchdog=0x10007000,
         uart=0x11002000,
         brom_payload_addr=0x100A00,
@@ -753,11 +754,20 @@ hwconfig = {
         # no dxcc
         cqdma_base=0x10212C00,
         ap_dma_mem=0x11000000 + 0x1A0,  # AP_DMA_I2C_0_RX_MEM_ADDR
-        # blacklist
+        blacklist=[(0x00102764, 0x0), (0x00105704, 0x0)],
+        blacklist_count=0x00000008,
+        send_ptr=(0x1027a4,0x990c),
+        ctrl_buffer=0x00103060,
+        cmd_handler=0x0000A493,
+        brom_register_access=(0x9be0,0x9da8),
         efuse_addr=0x10206000,
-        damode=damodes.DEFAULT,  #
+        meid_addr=0x1030B4,
+        #no socid
+        damode=damodes.DEFAULT,
         dacode=0x6752,
-        name="MT6752"),
+        #misc_lock=0x10001838,
+        name="MT6752",
+        loader="mt6752_payload.bin"),
     0x337: chipconfig(
         var1=0x28,  # confirmed
         watchdog=0x10212000,

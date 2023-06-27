@@ -73,7 +73,18 @@ class hwcrypto(metaclass=LogBase):
                 if mode == "cbc":
                     return self.sej.hw_aes128_cbc_encrypt(buf=data, encrypt=False)
                 elif mode == "sst":
-                    return self.sej.SST_Secure_Algo_With_Level(buf=data, encrypt=False)
+                    #return self.sej.SST_Secure_Algo_With_Level(buf=data, encrypt=False)
+                    data2=self.sej.generate_hw_meta(encrypt=False,data=data)
+                    CustomSeed = bytes.fromhex(
+                        "00be13bb95e218b53d07a089cb935255294f70d4088f3930350bc636cc49c9025ece7a62c292853ef55b23a6ef7b7464c7f3f2a74ae919416d6b4d9c1d6809655dd82d43d65999cf041a386e1c0f1e58849d8ed09ef07e6a9f0d7d3b8dad6cbae4668a2fd53776c3d26f88b0bf617c8112b8b1a871d322d9513491e07396e1638090055f4b8b9aa2f4ec24ebaeb917e81f468783ea771b278614cd5779a3ca50df5cc5af0edc332e2b69b2b42154bcfffd0af13ce5a467abb7fb107fe794f928da44b6db7215aa53bd0398e3403126fad1f7de2a56edfe474c5a06f8dd9bc0b3422c45a9a132e64e48fcacf63f787560c4c89701d7c125118c20a5ee820c3a16")
+                    seed = (CustomSeed[2] << 16) | (CustomSeed[1] << 8) | CustomSeed[0] | (CustomSeed[3] << 24)
+                    iv = [seed, (~seed) & 0xFFFFFFFF, (((seed >> 16) | (seed << 16)) & 0xFFFFFFFF),
+                          (~((seed >> 16) | (seed << 16)) & 0xFFFFFFFF)]
+                    data4=self.sej.hw_aes128_cbc_encrypt(buf=data,encrypt=False,iv=iv)
+                    data3=self.sej.SST_Secure_Algo_With_Level(buf=data, encrypt=False)
+                    print(data2.hex())
+                    print(data3.hex())
+                    sys.stdout.flush()
             if mode == "rpmb":
                 return self.sej.generate_rpmb(meid=data, otp=otp)
             elif mode == "mtee":
