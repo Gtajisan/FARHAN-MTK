@@ -9,6 +9,7 @@ from mtkclient.config.payloads import pathconfig
 from mtkclient.config.brom_config import damodes
 from mtkclient.Library.utils import structhelper
 
+
 class Storage:
     MTK_DA_HW_STORAGE_NOR = 0
     MTK_DA_HW_STORAGE_NAND = 1
@@ -80,6 +81,7 @@ class entry_region:
     m_start_addr = None
     m_start_offset = None
     m_sig_len = None
+
     def __init__(self, data):
         sh = structhelper(data)
         self.m_buf = sh.dword()
@@ -88,8 +90,13 @@ class entry_region:
         self.m_start_offset = sh.dword()
         self.m_sig_len = sh.dword()
 
+    def __repr__(self):
+        return f"Buf:{hex(self.m_buf)},Len:{hex(self.m_len)},Addr:{hex(self.m_start_addr)}," + \
+               f"Offset:{hex(self.m_start_offset)},Sig:{hex(self.m_sig_len)}"
+
+
 class DA:
-    def __init__(self,data):
+    def __init__(self, data):
         self.loader = None
         sh = structhelper(data)
         self.magic = sh.short()
@@ -109,6 +116,12 @@ class DA:
 
     def setfilename(self, loaderfilename: str):
         self.loader = loaderfilename
+
+    def __repr__(self):
+        info = f"HWCode:{hex(self.hw_code)},HWSubCode:{hex(self.hw_sub_code)}," + \
+               f"HWVer:{hex(self.hw_version)},SWVer:{hex(self.sw_version)}"
+        return info
+
 
 class DAconfig(metaclass=LogBase):
     def __init__(self, mtk, loader=None, preloader=None, loglevel=logging.INFO):
@@ -149,7 +162,7 @@ class DAconfig(metaclass=LogBase):
             if not os.path.exists(loader):
                 self.warning("Couldn't open " + loader)
             else:
-                self.info("Using custom loader: "+loader)
+                self.info("Using custom loader: " + loader)
                 self.parse_da_loader(loader)
 
     def m_extract_emi(self, data):
@@ -159,12 +172,12 @@ class DAconfig(metaclass=LogBase):
             data = data[idx:]
             mlen = unpack("<I", data[0x20:0x20 + 4])[0]
             siglen = unpack("<I", data[0x2C:0x2C + 4])[0]
-            data = data[:mlen-siglen]
-            dramsize = unpack("<I",data[-4:])[0]
-            if dramsize==0:
+            data = data[:mlen - siglen]
+            dramsize = unpack("<I", data[-4:])[0]
+            if dramsize == 0:
                 data = data[:-0x800]
                 dramsize = unpack("<I", data[-4:])[0]
-            data = data[-dramsize-4:-4]
+            data = data[-dramsize - 4:-4]
         bldrstring = b"MTK_BLOADER_INFO_v"
         len_bldrstring = len(bldrstring)
         idx = data.find(bldrstring)
@@ -211,7 +224,8 @@ class DAconfig(metaclass=LogBase):
                     da = DA(bootldr.read(0xDC))
                     da.setfilename(loader)
                     if da.hw_code not in self.dasetup:
-                        self.dasetup[da.hw_code] = [da]
+                        if da.hw_code!=0:
+                            self.dasetup[da.hw_code] = [da]
                     else:
                         for ldr in self.dasetup[da.hw_code]:
                             found = False
@@ -221,7 +235,8 @@ class DAconfig(metaclass=LogBase):
                                         found = True
                                         break
                         if not found:
-                            self.dasetup[da.hw_code].append(da)
+                            if da.hw_code != 0:
+                                self.dasetup[da.hw_code].append(da)
                 return True
         except Exception as e:
             self.error("Couldn't open loader: " + loader + ". Reason: " + str(e))
@@ -241,11 +256,13 @@ class DAconfig(metaclass=LogBase):
             self.error("No da_loader config set up")
         return self.da_loader
 
+
 if __name__ == "__main__":
     from mtkclient.Library.mtk_class import Mtk
     from mtkclient.Library.mtk_main import Mtk_Config
+
     config = Mtk_Config(loglevel=logging.INFO, gui=None,
                         guiprogress=None)
-    mtkg=Mtk(config=config)
-    dac=DAconfig(mtk=mtkg)
+    mtkg = Mtk(config=config)
+    dac = DAconfig(mtk=mtkg)
     dac.extract_emi("/home/bjk/Projects/mtkclient_github/preloader_meizu6795_lwt_l1.bin")

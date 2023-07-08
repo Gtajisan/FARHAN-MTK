@@ -127,7 +127,8 @@ class DAloader(metaclass=LogBase):
                 self.da.emmc.m_emmc_boot2_size = config["m_emmc_boot2_size"]
                 self.da.emmc.m_emmc_gp_size = config["m_emmc_gp_size"]
                 self.da.nand.m_nand_flash_size = config["m_nand_flash_size"]
-                self.da.sdc.m_sdmmc_ua_size = config["m_sdmmc_ua_size"]
+                if not self.mtk.config.iot:
+                    self.da.sdc.m_sdmmc_ua_size = config["m_sdmmc_ua_size"]
                 self.da.nor.m_nor_flash_size = config["m_nor_flash_size"]
                 self.xft = None
             return True
