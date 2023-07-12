@@ -836,9 +836,6 @@ class DALegacy(metaclass=LogBase):
 
     def __init__(self, mtk, daconfig, loglevel=logging.INFO):
         self.__logger = logsetup(self, self.__logger, loglevel, mtk.config.gui)
-        self.debug = self.debug
-        self.error = self.error
-        self.info = self.info
         self.emmc = None
         self.nand = None
         self.nor = None

@@ -139,10 +139,6 @@ class DAXFlash(metaclass=LogBase):
 
     def __init__(self, mtk, daconfig, loglevel=logging.INFO):
         self.__logger = logsetup(self, self.__logger, loglevel, mtk.config.gui)
-        self.info = self.__logger.info
-        self.debug = self.__logger.debug
-        self.error = self.__logger.error
-        self.warning = self.__logger.warning
         self.mtk = mtk
         self.loglevel = loglevel
         self.daext = False
@@ -542,11 +538,11 @@ class DAXFlash(metaclass=LogBase):
             data[:(5 * 2)])
         status = self.status()
         if status == 0:
-            self.info("HW-CODE         : 0x%X", chipid.hw_code)
-            self.info("HWSUB-CODE      : 0x%X", chipid.hw_sub_code)
-            self.info("HW-VERSION      : 0x%X", chipid.hw_version)
-            self.info("SW-VERSION      : 0x%X", chipid.sw_version)
-            self.info("CHIP-EVOLUTION  : 0x%X", chipid.chip_evolution)
+            self.info("HW-CODE         : 0x%X" % chipid.hw_code)
+            self.info("HWSUB-CODE      : 0x%X" % chipid.hw_sub_code)
+            self.info("HW-VERSION      : 0x%X" % chipid.hw_version)
+            self.info("SW-VERSION      : 0x%X" % chipid.sw_version)
+            self.info("CHIP-EVOLUTION  : 0x%X" % chipid.chip_evolution)
             return chipid
         else:
             self.error(f"Error on getting chip id: {self.eh.status(status)}")

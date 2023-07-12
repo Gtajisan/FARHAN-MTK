@@ -22,9 +22,6 @@ class Port(metaclass=LogBase):
 
     def __init__(self, mtk, portconfig, serialportname:str=None, loglevel=logging.INFO):
         self.__logger = logsetup(self, self.__logger, loglevel, mtk.config.gui)
-        self.info = self.__logger.info
-        self.debug = self.__logger.debug
-        self.error = self.__logger.error
         self.config = mtk.config
         self.mtk = mtk
         self.serialportname = None

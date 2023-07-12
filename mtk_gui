@@ -504,13 +504,15 @@ class MainWindow(QMainWindow):
             self.ui.connectInfo.setHidden(True)
             self.ui.partProgress.setHidden(False)
             self.ui.fullProgress.setHidden(False)
-            self.ui.tabWidget.setHidden(False)
             self.initread()
             self.initkeys()
             self.initunlock()
             self.initerase()
             self.initwrite()
             self.getpartitions()
+            self.ui.tabWidget.setCurrentIndex(0)
+            self.ui.tabWidget.update()
+            self.ui.tabWidget.setHidden(False)
 
         else:
             if 'cantConnect' in phoneInfo:

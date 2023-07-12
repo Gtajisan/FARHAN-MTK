@@ -22,10 +22,6 @@ class legacyext(metaclass=LogBase):
     def __init__(self, mtk, legacy, loglevel):
         self.pathconfig = pathconfig()
         self.__logger = logsetup(self, self.__logger, loglevel, mtk.config.gui)
-        self.info = self.__logger.info
-        self.debug = self.__logger.debug
-        self.error = self.__logger.error
-        self.warning = self.__logger.warning
         self.mtk = mtk
         self.loglevel = loglevel
         self.__logger = self.__logger
