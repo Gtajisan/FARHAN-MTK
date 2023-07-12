@@ -531,9 +531,9 @@ class xflashext(metaclass=LogBase):
             return False, "Unknown lockstate or no lockstate"
         if not sc_org.parse(seccfg_data):
             return False, "Device has is either already unlocked or algo is unknown. Aborting."
-        writedata = sc_org.create(lockflag=lockflag)
-        if writedata is None:
-            return False, "Error on creating seccfg, bad lock state"
+        ret, writedata = sc_org.create(lockflag=lockflag)
+        if ret is False:
+            return False, writedata
         if self.xflash.writeflash(addr=partition.sector * self.mtk.daloader.daconfig.pagesize,
                                   length=len(writedata),
                                   filename=None, wdata=writedata, parttype="user", display=True):

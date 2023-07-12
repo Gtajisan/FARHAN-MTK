@@ -80,11 +80,9 @@ class seccfgV4(metaclass=LogBase):
 
     def create(self, lockflag: str = "unlock"):
         if lockflag == "lock" and self.lock_state == 1:
-            self.error("Device is already locked")
-            return None
+            return False, "Device is already locked"
         elif lockflag == "unlock" and self.lock_state == 3:
-            self.error("Device is already unlocked")
-            return None
+            return False, "Device is already unlocked"
         if lockflag == "unlock":
             self.lock_state = 3
             self.critical_lock_state = 1
@@ -104,7 +102,7 @@ class seccfgV4(metaclass=LogBase):
         data = seccfg_data + enc_hash
         while len(data) % 0x200 != 0:
             data += b"\x00"
-        return bytearray(data)
+        return True, bytearray(data)
 
 
 class SECCFG_STATUS:
@@ -244,13 +242,13 @@ class seccfgV3(metaclass=LogBase):
             seccfg_attr_new = SECCFG_ATTR.ATTR_DEFAULT
 
         if lockflag == "lock" and self.seccfg_attr != SECCFG_ATTR.ATTR_UNLOCK:
-            return False, ("Can't find lock state, current (%#x)" % self.seccfg_attr)
+            return False, "Can't find lock state, current (%#x)" % self.seccfg_attr
         elif lockflag == "unlock" and self.seccfg_attr != SECCFG_ATTR.ATTR_DEFAULT \
                 and self.seccfg_attr != SECCFG_ATTR.ATTR_MP_DEFAULT \
                 and self.seccfg_attr != SECCFG_ATTR.ATTR_CUSTOM \
                 and self.seccfg_attr != SECCFG_ATTR.ATTR_VERIFIED \
                 and self.seccfg_attr != SECCFG_ATTR.ATTR_LOCK:
-            return False, ("Can't find unlock state, current (%#x)" % self.seccfg_attr)
+            return False, "Can't find unlock state, current (%#x)" % self.seccfg_attr
 
         data = bytearray()
         wf = BytesIO(data)
@@ -280,14 +278,14 @@ class seccfgV3(metaclass=LogBase):
         elif self.hwtype == "V3":
             data = self.hwc.sej.sej_sec_cfg_hw_V3(data, True)
         else:
-            return None
+            return False, "Unknown error"
         wf.write(data)
         wf.write(int.to_bytes(self.endflag, 4, 'little'))
 
         data = bytearray(wf.getbuffer())
         while len(data) % 0x200 != 0:
             data += b"\x00"
-        return bytearray(data)
+        return True, bytearray(data)
 
 if __name__ == "__main__":
     with open("seccfg.bin","rb") as rf:
@@ -300,5 +298,5 @@ if __name__ == "__main__":
         sej_base = None
     v3=seccfgV3(hwc,mtk)
     v3.parse(data)
-    newdata=v3.create("lock")
+    ret, newdata=v3.create("lock")
     print(newdata.hex())
