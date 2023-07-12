@@ -340,9 +340,13 @@ class DAXFlash(metaclass=LogBase):
                 try:
                     time.sleep(0.01)
                     if self.xsend(pack("<I", len(emi))):
-                        if self.send_param([emi]):
-                            self.info(f"DRAM setup passed.")
-                            return True
+                        try:
+                            if self.send_param([emi]):
+                                self.info(f"DRAM setup passed.")
+                                return True
+                        except Exception as err:
+                            self.info(f"DRAM setup failed: %s" % str(err))
+                            return False
                 except Exception as err:
                     self.error(f"Error on sending emi: {str(err)}")
                     return False
@@ -1050,7 +1054,7 @@ class DAXFlash(metaclass=LogBase):
             log_channel = 1
             system_os = self.FtSystemOSE.OS_LINUX
             ufs_provision = 0x0
-            param = pack("<IIIII", da_log_level, log_channel, system_os, ufs_provision, 0x1)
+            param = pack("<IIIII", da_log_level, log_channel, system_os, ufs_provision, 0x0)
             if self.send_param(param):
                 return True
         return False
@@ -1173,20 +1177,19 @@ class DAXFlash(metaclass=LogBase):
             # self.set_battery_opt(0x2)
             self.set_checksum_level(0x0)
             connagent = self.get_connection_agent()
-            emmc_info = self.get_emmc_info(False)
-            if emmc_info is not None and emmc_info.user_size != 0:
-                self.info("DRAM config needed for : " + hexlify(emmc_info.cid[:8]).decode('utf-8'))
-            else:
-                ufs_info = self.get_ufs_info()
-                if ufs_info is not None and ufs_info.block_size != 0:
-                    self.info("DRAM config needed for : " + hexlify(ufs_info.cid).decode('utf-8'))
-
             # dev_fw_info=self.get_dev_fw_info()
             # dramtype = self.get_dram_type()
             stage = None
             if connagent == b"brom":
                 stage = 1
                 if self.daconfig.emi is None:
+                    emmc_info = self.get_emmc_info(False)
+                    if emmc_info is not None and emmc_info.user_size != 0:
+                        self.info("DRAM config needed for : " + hexlify(emmc_info.cid[:8]).decode('utf-8'))
+                    else:
+                        ufs_info = self.get_ufs_info()
+                        if ufs_info is not None and ufs_info.block_size != 0:
+                            self.info("DRAM config needed for : " + hexlify(ufs_info.cid).decode('utf-8'))
                     self.info("No preloader given. Searching for preloader")
                     found = False
                     self.info("Sending emi data ...")
