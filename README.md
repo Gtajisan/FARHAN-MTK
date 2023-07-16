@@ -142,7 +142,7 @@ python mtk_gui
 ```bash
 python mtk script run.example
 ```
-See the file "run.example" on how to structure the script file
+See the file "[run.example](https://github.com/bkerler/mtkclient/blob/main/run.example)" on how to structure the script file
 
 ### Root the phone (Tested with android 9 - 12)
 
