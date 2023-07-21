@@ -405,6 +405,64 @@ class sej(metaclass=LogBase):
                     self.reg.HACC_AKEY0[pos] = pdst[pos] ^ self.reg.HACC_AKEY0[pos]
         return pdst
 
+    def SST_Init(self, attr, iv, keylen=0x10, mparam=5, key=None):
+        self.reg.HACC_SECINIT0 = 1
+        if keylen==0x10 or mparam&1!=0 or attr&1!=0:
+            acon_setting = 0
+        elif keylen==0x18:
+            acon_setting = 0x10
+        elif keylen==0x20:
+            acon_setting = 0x20
+        else:
+            acon_setting = 0x0
+        if attr&4==0:
+            print("SEJ_3DES_HW_SetKey")
+        if iv is not None:
+            acon_setting |= self.HACC_AES_CBC #0
+        self.reg.HACC_ACON = acon_setting
+
+        self.reg.HACC_AKEY0 = 0
+        self.reg.HACC_AKEY1 = 0
+        self.reg.HACC_AKEY2 = 0
+        self.reg.HACC_AKEY3 = 0
+        self.reg.HACC_AKEY4 = 0
+        self.reg.HACC_AKEY5 = 0
+        self.reg.HACC_AKEY6 = 0
+        self.reg.HACC_AKEY7 = 0
+        if mparam&1 != 0:
+            self.reg.HACC_ACONK = 0x10
+        else:
+            self.reg.HACC_AKEY0 = key[0]
+            self.reg.HACC_AKEY1 = key[1]
+            self.reg.HACC_AKEY2 = key[2]
+            self.reg.HACC_AKEY3 = key[3]
+            self.reg.HACC_AKEY4 = key[4]
+            self.reg.HACC_AKEY5 = key[5]
+            self.reg.HACC_AKEY6 = key[6]
+            self.reg.HACC_AKEY7 = key[7]
+        if attr&2!=0:
+            self.reg.HACC_ACON2 = self.HACC_AES_CLR
+            self.reg.HACC_ACFG0 = iv[0]  # g_AC_CFG
+            self.reg.HACC_ACFG1 = iv[1]
+            self.reg.HACC_ACFG2 = iv[2]
+            self.reg.HACC_ACFG3 = iv[3]
+
+        """
+        if attr&8!=0:
+            tmp=self.reg.HACC_SECINIT0|2
+        else:
+            tmp=self.reg.HACC_SECINIT0&0xFFFFFFFD
+        self.reg.HACC_SECINIT0=tmp
+        self.reg.HACC_ACON2 |= 0x40000000
+        reg = -1
+        while reg>=0:
+            reg = self.reg.HACC_ACON2
+        v=(~1)&0xFFFFFFFF
+        self.reg.HACC_SECINIT0&=v
+        self.reg.HACC_ACONK=0x10
+        self.reg.HACC_ACON|=acon_setting
+        """
+
     def SST_Secure_Algo_With_Level(self, buf, encrypt=True, aes_top_legacy=True):
         seed = (CustomSeed[2] << 16) | (CustomSeed[1] << 8) | CustomSeed[0] | (CustomSeed[3] << 24)
         iv = [seed, (~seed) & 0xFFFFFFFF, (((seed >> 16) | (seed << 16)) & 0xFFFFFFFF),
@@ -412,6 +470,7 @@ class sej(metaclass=LogBase):
         key = symkey()
         key.key = None
         key.key_len = 0x10
+        meta_key_len = 0x10
         key.mode = 1      # CBC
         key.iv = iv
         if aes_top_legacy:
@@ -438,10 +497,11 @@ class sej(metaclass=LogBase):
             self.SEJ_AES_HW_Init(attr, key, sej_param)
             for pos in range(3):
                 src = b"".join([int.to_bytes(val,4,'little') for val in self.g_CFG_RANDOM_PATTERN])
-                buf2 = self.SEJ_AES_HW_Internal(src, encrypt=True, attr=attr, sej_param=sej_param)
+                buf2 = self.SEJ_AES_HW_Internal(src, encrypt=False, attr=attr, sej_param=sej_param)
             attr = attr & 0xFFFFFFFA | 4
-            self.SEJ_AES_HW_Init(attr, key, sej_param)
-        buf2 = self.SEJ_AES_HW_Internal(buf, encrypt=encrypt, attr=attr, sej_param=sej_param)
+        else:
+            self.SST_Init(attr=attr,iv=iv,keylen=key.key_len,mparam=sej_param,key=key.key)
+        buf2 = self.SEJ_AES_HW_Internal(buf, encrypt=encrypt, attr=attr, sej_param=sej_param, legacy=False)
         return buf2
 
     def SEJ_Terminate(self):

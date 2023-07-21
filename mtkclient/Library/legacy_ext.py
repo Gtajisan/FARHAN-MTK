@@ -207,6 +207,14 @@ class legacyext(metaclass=LogBase):
                                    aeskey1=aeskey1, aeskey2=aeskey2)
                     open("tee_"+hex(idx)+".dec","wb").write(rdata)
 
+    def read_pubk(self):
+        if self.mtk.config.chipconfig.efuse_addr is not None:
+            base = self.mtk.config.chipconfig.efuse_addr
+            addr = base + 0x90
+            data = bytearray(self.mtk.daloader.peek(addr=addr, length=0x20))
+            return data
+        return None
+
     def generate_keys(self):
         hwc = self.cryptosetup()
         retval = {}
@@ -214,6 +222,10 @@ class legacyext(metaclass=LogBase):
         meid = self.config.get_meid()
         socid = self.config.get_socid()
         hwcode = self.config.get_hwcode()
+        pubk=self.read_pubk()
+        retval["pubkey"]=pubk.hex()
+        self.info("PUBK        : " + pubk.hex())
+        self.config.hwparam.writesetting("pubkey", pubk.hex())
         if meid is not None:
             self.info("MEID        : " + hexlify(meid).decode('utf-8'))
             retval["meid"] = hexlify(meid).decode('utf-8')

@@ -7,7 +7,6 @@ from mtkclient.Library.error import ErrorHandler, ErrorCodes_XFlash
 from mtkclient.Library.hwcrypto import crypto_setup, hwcrypto
 from mtkclient.Library.utils import LogBase, progress, logsetup, find_binary
 from mtkclient.Library.seccfg import seccfgV3, seccfgV4
-from binascii import hexlify
 from mtkclient.Library.utils import mtktee
 import json
 
@@ -301,7 +300,7 @@ class xflashext(metaclass=LogBase):
             res = self.custom_read(addr, dwords * 4)
             res = [unpack("<I", res[i:i + 4])[0] for i in range(0, len(res), 4)]
 
-        self.debug(f"RX: {hex(addr)} -> " + hexlify(b"".join(pack("<I", val) for val in res)).decode('utf-8'))
+        self.debug(f"RX: {hex(addr)} -> " + bytearray(b"".join(pack("<I", val) for val in res)).hex())
         return res
 
     def writeregister(self, addr, dwords):
@@ -393,7 +392,7 @@ class xflashext(metaclass=LogBase):
             if int.from_bytes(derivedrpmb[:4], 'little') != 0xff:
                 status = self.status()
                 if status == 0:
-                    self.info("Derived rpmb key:" + hexlify(derivedrpmb).decode('utf-8'))
+                    self.info("Derived rpmb key:" + derivedrpmb.hex())
                     return True
             self.error("Failed to derive a valid rpmb key.")
         return False
@@ -560,6 +559,14 @@ class xflashext(metaclass=LogBase):
             return data
         return None
 
+    def read_pubk(self):
+        if self.mtk.config.chipconfig.efuse_addr is not None:
+            base = self.mtk.config.chipconfig.efuse_addr
+            addr = base + 0x90
+            data = bytearray(self.mtk.daloader.peek(addr=addr, length=0x20))
+            return data
+        return None
+
     def read_fuses(self):
         if self.mtk.config.chipconfig.efuse_addr is not None:
             base = self.mtk.config.chipconfig.efuse_addr
@@ -579,17 +586,21 @@ class xflashext(metaclass=LogBase):
         cid = self.config.get_cid()
         otp = self.config.get_otp()
         retval = {}
-        #data=hwc.aes_hwcrypt(data=bytes.fromhex("F2 97 D2 2C 29 05 26 6B 75 0D 2C DA AE 6B 95 A5 99 0B 8A 58 7F EC 01 1A 99 A5 1F 40 25 C3 24 96 84 2D ED 71 BD 4D 7E CD D3 2A 6C DF B5 59 41 04 64 9C 09 4A D6 65 03 89 14 C3 2F A7 18 87 41 13"), mode="sst", btype="sej",
+        #data=hwc.aes_hwcrypt(data=bytes.fromhex("A9 E9 DC 38 BF 6B BD 12 CC 2E F9 E6 F5 65 E8 C6 88 F7 14 11 80 2E 4D 91 8C 2B 48 A5 BB 03 C3 E5"), mode="sst", btype="sej",
         #                encrypt=False)
         #self.info(data.hex())
+        pubk=self.read_pubk()
+        retval["pubkey"]=pubk.hex()
+        self.info("PUBK        : " + pubk.hex())
+        self.config.hwparam.writesetting("pubkey", pubk.hex())
         if meid is not None:
-            self.info("MEID        : " + hexlify(meid).decode('utf-8'))
-            retval["meid"] = hexlify(meid).decode('utf-8')
-            self.config.hwparam.writesetting("meid", hexlify(meid).decode('utf-8'))
+            self.info("MEID        : " + meid.hex())
+            retval["meid"] = meid.hex()
+            self.config.hwparam.writesetting("meid", meid.hex())
         if socid is not None:
-            self.info("SOCID       : " + hexlify(socid).decode('utf-8'))
-            retval["socid"] = hexlify(socid).decode('utf-8')
-            self.config.hwparam.writesetting("socid", hexlify(socid).decode('utf-8'))
+            self.info("SOCID       : " + socid.hex())
+            retval["socid"] = socid.hex()
+            self.config.hwparam.writesetting("socid", socid.hex())
         if hwcode is not None:
             self.info("HWCODE      : " + hex(hwcode))
             retval["hwcode"] = hex(hwcode)
@@ -610,59 +621,59 @@ class xflashext(metaclass=LogBase):
             ikey = hwc.aes_hwcrypt(btype="dxcc", mode="itrustee")
             # self.info("Generating dxcc platkey + provkey key...")
             # platkey, provkey = hwc.aes_hwcrypt(btype="dxcc", mode="prov")
-            # self.info("Provkey     : " + hexlify(provkey).decode('utf-8'))
-            # self.info("Platkey     : " + hexlify(platkey).decode('utf-8'))
+            # self.info("Provkey     : " + provkey.hex())
+            # self.info("Platkey     : " + platkey.hex())
             if mirpmbkey is not None:
-                self.info("MIRPMB      : " + hexlify(mirpmbkey).decode('utf-8'))
-                self.config.hwparam.writesetting("mirpmbkey", hexlify(mirpmbkey).decode('utf-8'))
-                retval["mirpmbkey"] = hexlify(mirpmbkey).decode('utf-8')
+                self.info("MIRPMB      : " + mirpmbkey.hex())
+                self.config.hwparam.writesetting("mirpmbkey", mirpmbkey.hex())
+                retval["mirpmbkey"] = mirpmbkey.hex()
             if rpmbkey is not None:
-                self.info("RPMB        : " + hexlify(rpmbkey).decode('utf-8'))
-                self.config.hwparam.writesetting("rpmbkey", hexlify(rpmbkey).decode('utf-8'))
-                retval["rpmbkey"] = hexlify(rpmbkey).decode('utf-8')
+                self.info("RPMB        : " + rpmbkey.hex())
+                self.config.hwparam.writesetting("rpmbkey", rpmbkey.hex())
+                retval["rpmbkey"] = rpmbkey.hex()
             if rpmb2key is not None:
-                self.info("RPMB2       : " + hexlify(rpmb2key).decode('utf-8'))
-                self.config.hwparam.writesetting("rpmb2key", hexlify(rpmb2key).decode('utf-8'))
-                retval["rpmb2key"] = hexlify(rpmb2key).decode('utf-8')
+                self.info("RPMB2       : " + rpmb2key.hex())
+                self.config.hwparam.writesetting("rpmb2key", rpmb2key.hex())
+                retval["rpmb2key"] = rpmb2key.hex()
             if fdekey is not None:
-                self.info("FDE         : " + hexlify(fdekey).decode('utf-8'))
-                self.config.hwparam.writesetting("fdekey", hexlify(fdekey).decode('utf-8'))
-                retval["fdekey"] = hexlify(fdekey).decode('utf-8')
+                self.info("FDE         : " + fdekey.hex())
+                self.config.hwparam.writesetting("fdekey", fdekey.hex())
+                retval["fdekey"] = fdekey.hex()
             if ikey is not None:
-                self.info("iTrustee    : " + hexlify(ikey).decode('utf-8'))
-                self.config.hwparam.writesetting("kmkey", hexlify(ikey).decode('utf-8'))
-                retval["kmkey"] = hexlify(ikey).decode('utf-8')
+                self.info("iTrustee    : " + ikey.hex())
+                self.config.hwparam.writesetting("kmkey", ikey.hex())
+                retval["kmkey"] = ikey.hex()
             if self.config.chipconfig.prov_addr:
                 provkey = self.custom_read(self.config.chipconfig.prov_addr, 16)
-                self.info("PROV        : " + hexlify(provkey).decode('utf-8'))
-                self.config.hwparam.writesetting("provkey", hexlify(provkey).decode('utf-8'))
-                retval["provkey"] = hexlify(provkey).decode('utf-8')
+                self.info("PROV        : " + provkey.hex())
+                self.config.hwparam.writesetting("provkey", provkey.hex())
+                retval["provkey"] = provkey.hex()
             hrid = self.xflash.get_hrid()
             rid = self.xflash.get_random_id()
             if hrid is not None:
-                self.info("HRID        : " + hexlify(hrid).decode('utf-8'))
-                self.config.hwparam.writesetting("hrid", hexlify(hrid).decode('utf-8'))
-                retval["hrid"] = hexlify(hrid).decode('utf-8')
+                self.info("HRID        : " + hrid.hex())
+                self.config.hwparam.writesetting("hrid", hrid.hex())
+                retval["hrid"] = hrid.hex()
             else:
                 val = self.read_fuse(0xC)
                 if val is not None:
                     val += self.read_fuse(0xD)
                     val += self.read_fuse(0xE)
                     val += self.read_fuse(0xF)
-                    self.info("HRID        : " + hexlify(val).decode('utf-8'))
-                    self.config.hwparam.writesetting("hrid", hexlify(val).decode('utf-8'))
-                    retval["hrid"] = hexlify(val).decode('utf-8')
+                    self.info("HRID        : " + val.hex())
+                    self.config.hwparam.writesetting("hrid", val.hex())
+                    retval["hrid"] = val.hex()
 
             if rid is not None:
-                self.info("RID         : " + hexlify(rid).decode('utf-8'))
-                self.config.hwparam.writesetting("rid", hexlify(rid).decode('utf-8'))
-                retval["rid"] = hexlify(rid).decode('utf-8')
+                self.info("RID         : " + rid.hex())
+                self.config.hwparam.writesetting("rid", rid.hex())
+                retval["rid"] = rid.hex()
             if hwcode == 0x699 and self.config.chipconfig.sej_base is not None:
                 mtee3 = hwc.aes_hwcrypt(mode="mtee3", btype="sej")
                 if mtee3:
-                    self.config.hwparam.writesetting("mtee3", hexlify(mtee3).decode('utf-8'))
-                    self.info("MTEE3       : " + hexlify(mtee3).decode('utf-8'))
-                    retval["mtee3"] = hexlify(mtee3).decode('utf-8')
+                    self.config.hwparam.writesetting("mtee3", mtee3.hex())
+                    self.info("MTEE3       : " + mtee3.hex())
+                    retval["mtee3"] = mtee3.hex()
             return retval
         elif self.config.chipconfig.sej_base is not None:
             if os.path.exists("tee.json"):
@@ -676,20 +687,20 @@ class xflashext(metaclass=LogBase):
                 self.setotp(hwc)
                 rpmbkey = hwc.aes_hwcrypt(mode="rpmb", data=meid, btype="sej", otp=otp)
                 if rpmbkey:
-                    self.info("RPMB        : " + hexlify(rpmbkey).decode('utf-8'))
-                    self.config.hwparam.writesetting("rpmbkey", hexlify(rpmbkey).decode('utf-8'))
-                    retval["rpmbkey"] = hexlify(rpmbkey).decode('utf-8')
+                    self.info("RPMB        : " + rpmbkey.hex())
+                    self.config.hwparam.writesetting("rpmbkey", rpmbkey.hex())
+                    retval["rpmbkey"] = rpmbkey.hex()
                 self.info("Generating sej mtee...")
                 mtee = hwc.aes_hwcrypt(mode="mtee", btype="sej", otp=otp)
                 if mtee:
-                    self.config.hwparam.writesetting("mtee", hexlify(mtee).decode('utf-8'))
-                    self.info("MTEE        : " + hexlify(mtee).decode('utf-8'))
-                    retval["mtee"] = hexlify(mtee).decode('utf-8')
+                    self.config.hwparam.writesetting("mtee", mtee.hex())
+                    self.info("MTEE        : " + mtee.hex())
+                    retval["mtee"] = mtee.hex()
                 mtee3 = hwc.aes_hwcrypt(mode="mtee3", btype="sej", otp=otp)
                 if mtee3:
-                    self.config.hwparam.writesetting("mtee3", hexlify(mtee3).decode('utf-8'))
-                    self.info("MTEE3       : " + hexlify(mtee3).decode('utf-8'))
-                    retval["mtee3"] = hexlify(mtee3).decode('utf-8')
+                    self.config.hwparam.writesetting("mtee3", mtee3.hex())
+                    self.info("MTEE3       : " + mtee3.hex())
+                    retval["mtee3"] = mtee3.hex()
             else:
                 self.info("SEJ Mode: No meid found. Are you in brom mode ?")
         if self.config.chipconfig.gcpu_base is not None:
@@ -697,7 +708,7 @@ class xflashext(metaclass=LogBase):
                 self.info("Generating gcpu mtee2 key...")
                 mtee2 = hwc.aes_hwcrypt(btype="gcpu", mode="mtee")
                 if mtee2 is not None:
-                    self.info("MTEE2       : " + hexlify(mtee2).decode('utf-8'))
-                    self.config.hwparam.writesetting("mtee2", hexlify(mtee2).decode('utf-8'))
-                    retval["mtee2"] = hexlify(mtee2).decode('utf-8')
+                    self.info("MTEE2       : " + mtee2.hex())
+                    self.config.hwparam.writesetting("mtee2", mtee2.hex())
+                    retval["mtee2"] = mtee2.hex()
         return retval
