@@ -17,7 +17,9 @@ from mtkclient.Library.utils import print_progress
 from mtkclient.Library.error import ErrorHandler
 from mtkclient.Library.mtk_da_cmd import DA_handler
 from mtkclient.Library.gpt import gpt_settings
+
 metamodes = "[FASTBOOT, FACTFACT, METAMETA, FACTORYM, ADVEMETA, AT+NBOOT]"
+
 
 class ArgHandler(metaclass=LogBase):
     def __init__(self, args, config):
@@ -99,7 +101,7 @@ class ArgHandler(metaclass=LogBase):
             if args.preloader is not None:
                 if os.path.exists(args.preloader):
                     config.preloader_filename = args.preloader
-                    config.preloader = open(config.preloader_filename,"rb").read()
+                    config.preloader = open(config.preloader_filename, "rb").read()
         except AttributeError:
             pass
         try:
@@ -144,8 +146,9 @@ class ArgHandler(metaclass=LogBase):
         except:
             pass
 
-        config.gpt_settings = gpt_settings(gpt_num_part_entries,gpt_part_entry_size,
-                                         gpt_part_entry_start_lba)
+        config.gpt_settings = gpt_settings(gpt_num_part_entries, gpt_part_entry_size,
+                                           gpt_part_entry_start_lba)
+
 
 class Main(metaclass=LogBase):
     def __init__(self, args):
@@ -277,7 +280,8 @@ class Main(metaclass=LogBase):
                             time.sleep(2)
                             config = Mtk_Config(loglevel=self.__logger.level, gui=mtk.config.gui,
                                                 guiprogress=mtk.config.guiprogress)
-                            mtk = Mtk(loglevel=self.__logger.level, config=config, serialportname=mtk.port.serialportname)
+                            mtk = Mtk(loglevel=self.__logger.level, config=config,
+                                      serialportname=mtk.port.serialportname)
                             res = mtk.preloader.init()
                             if not res:
                                 self.error("Error on loading preloader")
@@ -304,7 +308,7 @@ class Main(metaclass=LogBase):
             while dwords:
                 size = min(512 // 4, dwords)
                 if dwords == 1:
-                    data = pack("<I",mtk.preloader.read32(addr + pos, size))
+                    data = pack("<I", mtk.preloader.read32(addr + pos, size))
                 else:
                     data = b"".join(int.to_bytes(val, 4, 'little') for val in mtk.preloader.read32(addr + pos, size))
                 sdata += data
@@ -364,10 +368,10 @@ class Main(metaclass=LogBase):
         cmd = self.args.cmd
         if cmd == "script":
             if not os.path.exists(self.args.script):
-                self.error("Couldn't find script: "+self.args.script)
+                self.error("Couldn't find script: " + self.args.script)
                 self.close()
                 return
-            commands=open(self.args.script,"r").read().splitlines()
+            commands = open(self.args.script, "r").read().splitlines()
             # DA / FLash commands start here
             try:
                 preloader = self.args.preloader
@@ -456,7 +460,7 @@ class Main(metaclass=LogBase):
             if mtk.config.chipconfig.pl_payload_addr is not None:
                 plstageaddr = mtk.config.chipconfig.pl_payload_addr
             else:
-                plstageaddr = 0x40001000 #0x40200000  # 0x40001000
+                plstageaddr = 0x40001000  # 0x40200000  # 0x40001000
             if self.args.pl is None:
                 plstage = os.path.join(mtk.pathconfig.get_payloads_path(), "pl.bin")
             else:
@@ -464,7 +468,7 @@ class Main(metaclass=LogBase):
             if os.path.exists(plstage):
                 with open(plstage, "rb") as rf:
                     rf.seek(0)
-                    if os.path.basename(plstage)!="pl.bin":
+                    if os.path.basename(plstage) != "pl.bin":
                         pldata = mtk.patch_preloader_security_da1(rf.read())
                     else:
                         pldata = rf.read()
@@ -478,7 +482,7 @@ class Main(metaclass=LogBase):
             else:
                 self.error("Couldn't connect to device, aborting.")
 
-            if mtk.config.is_brom and mtk.config.preloader is None and os.path.basename(plstage)=="pl.bin":
+            if mtk.config.is_brom and mtk.config.preloader is None and os.path.basename(plstage) == "pl.bin":
                 self.warning("PL stage needs preloader, please use --preloader option. " +
                              "Trying to dump preloader from ram.")
                 plt = PLTools(mtk=mtk, loglevel=self.__logger.level)
@@ -521,30 +525,30 @@ class Main(metaclass=LogBase):
                         if self.args.startpartition is not None:
                             partition = self.args.startpartition
                             self.info("Booting to : " + partition)
-                            #mtk.preloader.send_partition_data(partition, mtk.patch_preloader_security(pldata))
+                            # mtk.preloader.send_partition_data(partition, mtk.patch_preloader_security(pldata))
                             status = mtk.preloader.jump_to_partition(partition)  # Do not remove !
 
                         if self.args.offset is not None and self.args.length is not None:
                             offset = getint(self.args.offset)
                             length = getint(self.args.length)
                             rlen = min(0x200, length)
-                            status=0
+                            status = 0
                             mtk.preloader.get_hw_sw_ver()
                             if self.args.filename is not None:
-                                with open(self.args.filename,"wb") as wf:
-                                    for pos in range(offset, offset+length,rlen):
+                                with open(self.args.filename, "wb") as wf:
+                                    for pos in range(offset, offset + length, rlen):
                                         print("Reading pos %08X" % pos)
-                                        res = mtk.preloader.read32(pos, rlen//4)
-                                        wf.write(b"".join([pack("<I",val) for val in res]))
+                                        res = mtk.preloader.read32(pos, rlen // 4)
+                                        wf.write(b"".join([pack("<I", val) for val in res]))
                             else:
-                                for pos in range(offset, offset+length,rlen):
+                                for pos in range(offset, offset + length, rlen):
                                     print("Reading pos %08X" % pos)
                                     res = mtk.preloader.read32(pos, rlen // 4)
-                                    if res==[]:
+                                    if res == []:
                                         break
-                                    print(hexlify(b"".join([pack("<I",val) for val in res])).decode('utf-8'))
+                                    print(hexlify(b"".join([pack("<I", val) for val in res])).decode('utf-8'))
 
-                            #for val in res:
+                            # for val in res:
                             #    print(hex(val))
                             if status != 0x0:
                                 self.error("Error on jumping to partition: " + self.eh.status(status))
@@ -633,7 +637,6 @@ class Main(metaclass=LogBase):
                 da_handler.handle_da_cmds(mtk, cmd, self.args)
             else:
                 self.close()
-
 
     def cmd_log(self, mtk, filename):
         if mtk.preloader.init():

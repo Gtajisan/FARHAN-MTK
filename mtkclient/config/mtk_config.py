@@ -219,7 +219,7 @@ class Mtk_Config(metaclass=LogBase):
         bmtflag = 1
         bmtblockcount = 0
         bmtpartsize = 0
-        if hwcode in [0x6592, 0x6582, 0x8127, 0x6571]:
+        if hwcode in [0x6592, 0x8127, 0x6571]:
             if self.daconfig.flashtype == "emmc":
                 bmtflag = 1
                 bmtblockcount = 0xA8
