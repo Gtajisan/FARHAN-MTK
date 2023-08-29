@@ -223,7 +223,8 @@ class legacyext(metaclass=LogBase):
         socid = self.config.get_socid()
         hwcode = self.config.get_hwcode()
         pubk=self.read_pubk()
-        retval["pubkey"]=pubk.hex()
+        if pubk is not None:
+            retval["pubkey"]=pubk.hex()
         self.info("PUBK        : " + pubk.hex())
         self.config.hwparam.writesetting("pubkey", pubk.hex())
         if meid is not None:

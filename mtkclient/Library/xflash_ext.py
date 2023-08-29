@@ -590,7 +590,8 @@ class xflashext(metaclass=LogBase):
         #                encrypt=False)
         #self.info(data.hex())
         pubk=self.read_pubk()
-        retval["pubkey"]=pubk.hex()
+        if pubk is not None:
+            retval["pubkey"]=pubk.hex()
         self.info("PUBK        : " + pubk.hex())
         self.config.hwparam.writesetting("pubkey", pubk.hex())
         if meid is not None:
