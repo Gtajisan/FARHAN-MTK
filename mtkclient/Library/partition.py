@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
-# (c) B.Kerler 2018-2021 GPLv3 License
+# (c) B.Kerler 2018-2023 GPLv3 License
 import logging
 
 from mtkclient.Library.utils import LogBase, logsetup
@@ -18,15 +18,16 @@ class Partition(metaclass=LogBase):
             self.gptfilename = self.config.gpt_file
             self.readflash = self.readflash_override
 
-    def readflash_override(self, addr:int, length:int,filename:str="",parttype:str="",display:bool=False):
-        with open(self.gptfilename,"rb") as rf:
+    def readflash_override(self, addr: int, length: int, filename: str = "", parttype: str = "",
+                           display: bool = False) -> bytes:
+        with open(self.gptfilename, "rb") as rf:
             rf.seek(addr)
-            data=rf.read(length)
+            data = rf.read(length)
             if filename == "":
                 return data
-        return None
+        return b""
 
-    def get_gpt(self, gpt_settings, parttype="user"):
+    def get_gpt(self, gpt_settings, parttype="user") -> tuple:
         data = self.readflash(addr=0, length=2 * self.config.pagesize, filename="", parttype=parttype, display=False)
         if data[:4] == b"BPI\x00":
             guid_gpt = gpt(
@@ -61,7 +62,8 @@ class Partition(metaclass=LogBase):
         )
         header = guid_gpt.parseheader(data, self.config.pagesize)
         if header.signature == b'\x00\x00\x00\x00\x00\x00\x00\x00':
-            data = self.readflash(addr=self.mtk.daloader.daconfig.flashsize-0x4000, length=2 * self.config.pagesize, filename="", parttype=parttype, display=False)
+            data = self.readflash(addr=self.mtk.daloader.daconfig.flashsize - 0x4000, length=2 * self.config.pagesize,
+                                  filename="", parttype=parttype, display=False)
             header = guid_gpt.parseheader(data, self.config.pagesize)
             if header.signature == b'\x00\x00\x00\x00\x00\x00\x00\x00':
                 return None, None
@@ -75,10 +77,10 @@ class Partition(metaclass=LogBase):
         guid_gpt.parse(data, self.config.pagesize)
         return data, guid_gpt
 
-    def get_backup_gpt(self, lun, gpt_num_part_entries, gpt_part_entry_size, gpt_part_entry_start_lba, parttype="user"):
+    def get_backup_gpt(self, lun, gpt_num_part_entries, gpt_part_entry_size, gpt_part_entry_start_lba, parttype="user") -> bytearray:
         data = self.readflash(addr=0, length=2 * self.config.pagesize, filename="", parttype=parttype, display=False)
         if data == b"":
-            return None
+            return data
         guid_gpt = gpt(
             num_part_entries=gpt_num_part_entries,
             part_entry_size=gpt_part_entry_size,
@@ -89,6 +91,4 @@ class Partition(metaclass=LogBase):
         data = self.readflash(addr=header.backup_lba * self.config.pagesize,
                               length=sectors * self.config.pagesize, filename="",
                               display=False)
-        if data == b"":
-            return None
         return data

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# MTK Flash Client (c) B.Kerler 2018-2021.
+# MTK Flash Client (c) B.Kerler 2018-2023.
 # Licensed under GPLv3 License
 import os
 import logging
@@ -8,7 +8,7 @@ from mtkclient.config.usb_ids import default_ids
 from mtkclient.config.payloads import pathconfig
 from mtkclient.Library.pltools import PLTools
 from mtkclient.Library.mtk_preloader import Preloader
-from mtkclient.Library.mtk_daloader import DAloader
+from mtkclient.Library.DA.mtk_daloader import DAloader
 from mtkclient.Library.Port import Port
 from mtkclient.Library.utils import LogBase, logsetup
 from mtkclient.Library.error import ErrorHandler

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# MTK Flash Client (c) B.Kerler 2018-2021.
+# MTK Flash Client (c) B.Kerler 2018-2023.
 # Licensed under GPLv3 License
 import os
 import sys
@@ -15,7 +15,7 @@ from mtkclient.Library.utils import LogBase, getint
 from mtkclient.config.mtk_config import Mtk_Config
 from mtkclient.Library.utils import print_progress
 from mtkclient.Library.error import ErrorHandler
-from mtkclient.Library.mtk_da_cmd import DA_handler
+from mtkclient.Library.DA.mtk_da_handler import DA_handler
 from mtkclient.Library.gpt import gpt_settings
 
 metamodes = "[FASTBOOT, FACTFACT, METAMETA, FACTORYM, ADVEMETA, AT+NBOOT]"

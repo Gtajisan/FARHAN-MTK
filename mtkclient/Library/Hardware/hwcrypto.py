@@ -1,14 +1,14 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
-# (c) B.Kerler 2018-2021 GPLv3 License
+# (c) B.Kerler 2018-2023 GPLv3 License
 import logging
 import sys
 
 from mtkclient.Library.utils import LogBase, logsetup
-from mtkclient.Library.hwcrypto_gcpu import GCpu
-from mtkclient.Library.hwcrypto_dxcc import dxcc
-from mtkclient.Library.hwcrypto_sej import sej
-from mtkclient.Library.cqdma import cqdma
+from mtkclient.Library.Hardware.hwcrypto_gcpu import GCpu
+from mtkclient.Library.Hardware.hwcrypto_dxcc import dxcc
+from mtkclient.Library.Hardware.hwcrypto_sej import sej
+from mtkclient.Library.Hardware.cqdma import cqdma
 
 
 class crypto_setup:

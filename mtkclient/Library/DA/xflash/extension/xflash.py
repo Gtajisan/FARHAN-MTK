@@ -4,9 +4,9 @@ from struct import unpack, pack
 from mtkclient.config.payloads import pathconfig
 from mtkclient.config.brom_config import efuse
 from mtkclient.Library.error import ErrorHandler, ErrorCodes_XFlash
-from mtkclient.Library.hwcrypto import crypto_setup, hwcrypto
+from mtkclient.Library.Hardware.hwcrypto import crypto_setup, hwcrypto
 from mtkclient.Library.utils import LogBase, progress, logsetup, find_binary
-from mtkclient.Library.seccfg import seccfgV3, seccfgV4
+from mtkclient.Library.Hardware.seccfg import seccfgV3, seccfgV4
 from mtkclient.Library.utils import mtktee
 import json
 

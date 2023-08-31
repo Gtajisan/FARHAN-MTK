@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
-# (c) B.Kerler 2018-2021 GPLv3 License
+# (c) B.Kerler 2018-2023 GPLv3 License
 import json
 import logging
 import os
@@ -8,12 +8,13 @@ import hashlib
 from binascii import hexlify
 from mtkclient.Library.utils import LogBase, logsetup, progress
 from mtkclient.Library.error import ErrorHandler
-from mtkclient.Library.daconfig import DAconfig
-from mtkclient.Library.mtk_dalegacy import DALegacy, norinfo, emmcinfo, sdcinfo, nandinfo64
-from mtkclient.Library.mtk_daxflash import DAXFlash
+from mtkclient.Library.DA.daconfig import DAconfig
+from mtkclient.Library.DA.legacy.dalegacy import DALegacy
+from mtkclient.Library.DA.legacy.dalegacy_flash_param import norinfo, emmcinfo, sdcinfo, nandinfo64
+from mtkclient.Library.DA.xflash.xflash import DAXFlash
 from mtkclient.config.brom_config import damodes
-from mtkclient.Library.xflash_ext import xflashext
-from mtkclient.Library.legacy_ext import legacyext
+from mtkclient.Library.DA.xflash.extension.xflash import xflashext
+from mtkclient.Library.DA.legacy.extension.legacy import legacyext
 from mtkclient.Library.settings import hwparam
 
 
@@ -186,12 +187,12 @@ class DAloader(metaclass=LogBase):
         else:
             return guid_gpt.partentries
 
-    def get_gpt(self, parttype=None):
+    def get_gpt(self, parttype=None) -> tuple:
         fpartitions = []
         data, guid_gpt = self.da.partition.get_gpt(self.mtk.config.gpt_settings, parttype)
         if guid_gpt is None:
-            return [False, fpartitions]
-        return [data, guid_gpt]
+            return False, fpartitions
+        return data, guid_gpt
 
     def upload(self):
         return self.da.upload()

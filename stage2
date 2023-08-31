@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# MTK Stage2 Client (c) B.Kerler 2018-2021.
+# MTK Stage2 Client (c) B.Kerler 2018-2023.
 # Licensed under GPLv3 License
 
 import os
@@ -13,7 +13,7 @@ from struct import pack, unpack
 from mtkclient.Library.Connection.usblib import usb_class
 from mtkclient.Library.utils import LogBase
 from mtkclient.Library.utils import print_progress
-from mtkclient.Library.hwcrypto import crypto_setup, hwcrypto
+from mtkclient.Library.Hardware.hwcrypto import crypto_setup, hwcrypto
 from mtkclient.config.mtk_config import Mtk_Config
 from mtkclient.config.usb_ids import default_ids
 

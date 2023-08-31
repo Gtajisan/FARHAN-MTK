@@ -10,6 +10,7 @@ from mtkclient.Library.error import ErrorHandler
 from mtkclient.Library.utils import progress
 from mtkclient.config.brom_config import efuse
 
+
 class DA_handler(metaclass=LogBase):
     def __init__(self, mtk, loglevel=logging.INFO):
         self.__logger = self.__logger
@@ -111,7 +112,6 @@ class DA_handler(metaclass=LogBase):
                 self.info("Device is in Preloader-Mode :(")
             else:
                 self.info("Device is in BROM-Mode. Iot Mode :)")
-
 
         if preloader is not None and mtk.config.preloader is None:
             mtk.config.preloader = preloader
@@ -468,7 +468,7 @@ class DA_handler(metaclass=LogBase):
         else:
             pos = 0
             self.mtk.daloader.formatflash(addr=sector * self.mtk.daloader.daconfig.pagesize,
-                                          length=min(sectors*self.mtk.daloader.daconfig.pagesize,0xF000000),
+                                          length=min(sectors * self.mtk.daloader.daconfig.pagesize, 0xF000000),
                                           partitionname=None,
                                           parttype=parttype,
                                           display=True)
@@ -517,7 +517,8 @@ class DA_handler(metaclass=LogBase):
         else:
             pos = 0
             for partitionname in partitions:
-                self.mtk.daloader.formatflash(addr=pos, length=min(sectors * self.mtk.daloader.daconfig.pagesize,0xF000000),
+                self.mtk.daloader.formatflash(addr=pos,
+                                              length=min(sectors * self.mtk.daloader.daconfig.pagesize, 0xF000000),
                                               partitionname=partitionname,
                                               parttype=parttype,
                                               display=True)
@@ -541,7 +542,7 @@ class DA_handler(metaclass=LogBase):
         if self.mtk.config.chipconfig.efuse_addr is not None:
             base = self.mtk.config.chipconfig.efuse_addr
             hwcode = self.mtk.config.hwcode
-            efuseconfig = efuse(base,hwcode)
+            efuseconfig = efuse(base, hwcode)
             for idx in range(len(efuseconfig.efuses)):
                 addr = efuseconfig.efuses[idx]
                 data = bytearray(self.mtk.daloader.peek(addr=addr, length=4))
@@ -727,7 +728,7 @@ class DA_handler(metaclass=LogBase):
                 if not os.path.exists(directory):
                     os.mkdir(directory)
                 dramaddr = 0x40000000
-                dramsize = 0x100000000 - 0x40000000 # 0xE0000000
+                dramsize = 0x100000000 - 0x40000000  # 0xE0000000
                 bromaddr = 0
                 bromsize = 0x200000
                 sramaddr = 0x200000
@@ -743,8 +744,8 @@ class DA_handler(metaclass=LogBase):
                 self.info("Dumping brom...")
                 self.da_peek(addr=bromaddr, length=bromsize,
                              filename=os.path.join(directory, "dump_brom.bin"))
-                self.info(f"Dumping dram at {hex(dramaddr)}, size {hex(dramsize-dramaddr)}...")
-                self.da_peek(addr=dramaddr, length=0x100000000-dramaddr,
+                self.info(f"Dumping dram at {hex(dramaddr)}, size {hex(dramsize - dramaddr)}...")
+                self.da_peek(addr=dramaddr, length=0x100000000 - dramaddr,
                              filename=os.path.join(directory, f"dump_dram_{hex(dramaddr)}.bin"))
                 self.info(f"Dumping efuse at {hex(efuseaddr)}, size at {hex(efusesize)}...")
                 self.da_peek(addr=efuseaddr, length=efusesize,

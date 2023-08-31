@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
-# (c) B.Kerler 2018-2021 GPLv3 License
+# (c) B.Kerler 2018-2023 GPLv3 License
 import os
 import logging
 from enum import Enum
@@ -164,7 +164,7 @@ class Preloader(metaclass=LogBase):
             self.config.hwver = self.read_a2(0x80000000)
             self.config.hwcode = self.read_a2(0x80000008)
             self.config.hw_sub_code = self.read_a2(0x8000000C)
-            self.config.swver = (self.read32(0xA01C0108)&0xFFFF0000)>>16
+            self.config.swver = (self.read32(0xA01C0108) & 0xFFFF0000) >> 16
         else:
             if not self.echo(self.Cmd.GET_HW_CODE.value):  # 0xFD
                 if not self.echo(self.Cmd.GET_HW_CODE.value):
@@ -255,10 +255,10 @@ class Preloader(metaclass=LogBase):
                     self.error(self.eh.status(status))
         return result
 
-    def read32(self, addr, dwords=1) -> list:
+    def read32(self, addr, dwords=1) -> (list, int):
         return self.read(addr, dwords, 32)
 
-    def read16(self, addr, dwords=1) -> list:
+    def read16(self, addr, dwords=1) -> (list, int):
         return self.read(addr, dwords, 16)
 
     def write(self, addr, values, length=32) -> bool:
@@ -384,27 +384,27 @@ class Preloader(metaclass=LogBase):
         addr, value = self.config.get_watchdog_addr()
 
         if hwcode == 0x6261:
-            #SetLongPressPWKEY
+            # SetLongPressPWKEY
             self.read32(0xA01C0108)
-            self.write16(0xA0700F00,0x41)
+            self.write16(0xA0700F00, 0x41)
             self.write16(0xA0700F00, 0x51)
             self.write16(0xA0700F00, 0x41)
-            #SetReg_DisableChargeControl()
-            self.write16(0xA0700A28,self.read16(0xA0700A28)|0x4000)
-            self.write16(0xA0700A00,self.read16(0xA0700A00,1)|0x10)
+            # SetReg_DisableChargeControl()
+            self.write16(0xA0700A28, self.read16(0xA0700A28) | 0x4000)
+            self.write16(0xA0700A00, self.read16(0xA0700A00, 1) | 0x10)
             self.write16(0xA0030000, 0x2200)
-            #SetReg_LockPowerKey
-            self.read16(0xA0710000,1)
-            #PowerKeysMatched
+            # SetReg_LockPowerKey
+            self.read16(0xA0710000, 1)
+            # PowerKeysMatched
             self.read16(0xA0710050, 1)
             self.read16(0xA0710054, 1)
             self.write16(0xA0710010, 0)
             self.write16(0xA0710008, 0)
             self.write16(0xA071000C, 0)
 
-            #Unlock
+            # Unlock
             self.write16(0xA0710074, 1)
-            val2=self.read16(0xA0710000, 1)
+            val2 = self.read16(0xA0710000, 1)
             self.write16(0xA0710050, 0xA357)
             self.write16(0xA0710054, 0x67D2)
             self.read16(0xA0710074, 1)
@@ -420,7 +420,7 @@ class Preloader(metaclass=LogBase):
             # Get Target Config : D8
 
             # SetRemap:
-            self.write32(0xA0510000,self.read32(0xA0510000,1)|2)
+            self.write32(0xA0510000, self.read32(0xA0510000, 1) | 2)
             self.write32(0xA0510000, self.read32(0xA0510000, 1) | 2)
             res = True
 

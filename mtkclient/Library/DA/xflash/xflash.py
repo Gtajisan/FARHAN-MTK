@@ -1,144 +1,34 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
-# (c) B.Kerler 2018-2021 GPLv3 License
+# (c) B.Kerler 2018-2023 GPLv3 License
 import logging
 import time
 import os
 from binascii import hexlify
 from struct import pack, unpack
+
+from mtkclient.Library.DA.xflash.xflash_flash_param import NandExtension
+from mtkclient.Library.DA.xflash.xflash_param import Cmd, ChecksumAlgorithm, FtSystemOSE, DataType
 from mtkclient.Library.utils import LogBase, logsetup
 from mtkclient.Library.error import ErrorHandler
-from mtkclient.Library.daconfig import EMMC_PartitionType, UFS_PartitionType, DaStorage
+from mtkclient.Library.DA.daconfig import EMMC_PartitionType, UFS_PartitionType, DaStorage
 from mtkclient.Library.partition import Partition
 from mtkclient.config.payloads import pathconfig
-from mtkclient.Library.xflash_ext import xflashext, XCmd
+from mtkclient.Library.DA.xflash.extension.xflash import xflashext, XCmd
 from mtkclient.Library.settings import hwparam
-from queue import Queue
-from threading import Thread
-
+from mtkclient.Library.thread_handling import writedata, Queue, Thread
 rq = Queue()
 
-def writedata(filename, rq):
-    pos = 0
-    with open(filename, "wb") as wf:
-        while True:
-            data = rq.get()
-            if data is None:
-                break
-            pos += len(data)
-            wf.write(data)
-            rq.task_done()
 
-
-class NandExtension:
-    # uni=0, multi=1
-    cellusage = 0
-    # logical=0, physical=1, physical_pmt=2
-    addr_type = 0
-    # raw=0, ubi_img=1, ftl_img=2
-    bin_type = 0
-    # operation_type -> spare=0,page=1,page_ecc=2,page_spare_ecc=3,verify=4,page_spare_norandom,page_fdm
-    # nand_format_level -> format_normal=0,force=1,mark_bad_block=2,level_end=3
-    operation_type = 0  # or nand_format_level
-    sys_slc_percent = 0
-    usr_slc_percent = 0
-    phy_max_size = 0
-
-
-def addr_to_block(addr, blocksize):
-    return addr // blocksize
 
 
 class DAXFlash(metaclass=LogBase):
-    class Cmd:
-        MAGIC = 0xFEEEEEEF
-        SYNC_SIGNAL = 0x434E5953
-
-        UNKNOWN = 0x010000
-        DOWNLOAD = 0x010001
-        UPLOAD = 0x010002
-        FORMAT = 0x010003
-        WRITE_DATA = 0x010004
-        READ_DATA = 0x010005
-        FORMAT_PARTITION = 0x010006
-        SHUTDOWN = 0x010007
-        BOOT_TO = 0x010008
-        DEVICE_CTRL = 0x010009
-        INIT_EXT_RAM = 0x01000A
-        SWITCH_USB_SPEED = 0x01000B
-        READ_OTP_ZONE = 0x01000C
-        WRITE_OTP_ZONE = 0x01000D
-        WRITE_EFUSE = 0x01000E
-        READ_EFUSE = 0x01000F
-        NAND_BMT_REMARK = 0x010010
-        SETUP_ENVIRONMENT = 0x010100
-        SETUP_HW_INIT_PARAMS = 0x010101
-
-        SET_BMT_PERCENTAGE = 0x020001
-        SET_BATTERY_OPT = 0x020002
-        SET_CHECKSUM_LEVEL = 0x020003
-        SET_RESET_KEY = 0x020004
-        SET_HOST_INFO = 0x020005
-        SET_META_BOOT_MODE = 0x020006
-        SET_EMMC_HWRESET_PIN = 0x020007
-        SET_GENERATE_GPX = 0x020008
-        SET_REGISTER_VALUE = 0x020009
-        SET_EXTERNAL_SIG = 0x02000A
-        SET_REMOTE_SEC_POLICY = 0x02000B
-        SET_ALL_IN_ONE_SIG = 0x02000C
-        SET_RSC_INFO = 0x02000D
-        SET_UPDATE_FW = 0x020010
-        SET_UFS_CONFIG = 0x020011
-
-        GET_EMMC_INFO = 0x040001
-        GET_NAND_INFO = 0x040002
-        GET_NOR_INFO = 0x040003
-        GET_UFS_INFO = 0x040004
-        GET_DA_VERSION = 0x040005
-        GET_EXPIRE_DATA = 0x040006
-        GET_PACKET_LENGTH = 0x040007
-        GET_RANDOM_ID = 0x040008
-        GET_PARTITION_TBL_CATA = 0x040009
-        GET_CONNECTION_AGENT = 0x04000A
-        GET_USB_SPEED = 0x04000B
-        GET_RAM_INFO = 0x04000C
-        GET_CHIP_ID = 0x04000D
-        GET_OTP_LOCK_STATUS = 0x04000E
-        GET_BATTERY_VOLTAGE = 0x04000F
-        GET_RPMB_STATUS = 0x040010
-        GET_EXPIRE_DATE = 0x040011
-        GET_DRAM_TYPE = 0x040012
-        GET_DEV_FW_INFO = 0x040013
-        GET_HRID = 0x040014
-        GET_ERROR_DETAIL = 0x040015
-
-        START_DL_INFO = 0x080001
-        END_DL_INFO = 0x080002
-        ACT_LOCK_OTP_ZONE = 0x080003
-        DISABLE_EMMC_HWRESET_PIN = 0x080004
-        CC_OPTIONAL_DOWNLOAD_ACT = 0x800005
-        DA_STOR_LIFE_CYCLE_CHECK = 0x080007
-
-        UNKNOWN_CTRL_CODE = 0x0E0000
-        CTRL_STORAGE_TEST = 0x0E0001
-        CTRL_RAM_TEST = 0x0E0002
-        DEVICE_CTRL_READ_REGISTER = 0x0E0003
-
-    class ChecksumAlgorithm:
-        PLAIN = 0
-        CRC32 = 1
-        MD5 = 2
-
-    class FtSystemOSE:
-        OS_WIN = 0
-        OS_LINUX = 1
-
-    class DataType:
-        DT_PROTOCOL_FLOW = 1
-        DT_MESSAGE = 2
-
     def __init__(self, mtk, daconfig, loglevel=logging.INFO):
         self.__logger = logsetup(self, self.__logger, loglevel, mtk.config.gui)
+        self.Cmd = Cmd()
+        self.ChecksumAlgorithm = ChecksumAlgorithm()
+        self.FtSystemOSE = FtSystemOSE()
+        self.DataType = DataType()
         self.mtk = mtk
         self.loglevel = loglevel
         self.daext = False
@@ -242,7 +132,7 @@ class DAXFlash(metaclass=LogBase):
             status = unpack("<" + str(length // 4) + "I", tmp)[0]
         return status
 
-    def read_pmt(self):
+    def read_pmt(self) -> tuple:
         return b"", []
 
     def send_param(self, params):
@@ -864,11 +754,11 @@ class DAXFlash(metaclass=LogBase):
                 self.error(f"Error on reading data: {self.eh.status(status)}")
         return False
 
-    def readflash(self, addr, length, filename, parttype=None, display=True):
+    def readflash(self, addr, length, filename, parttype=None, display=True) -> bytes:
         global rq
         partinfo = self.getstorage(parttype, length)
         if not partinfo:
-            return None
+            return b""
         self.mtk.daloader.progress.clear()
         storage, parttype, length = partinfo
         plen = self.get_packet_length()
@@ -907,10 +797,10 @@ class DAXFlash(metaclass=LogBase):
                                 self.mtk.daloader.progress.show_progress("Read", total, total, display)
                             rq.put(None)
                             worker.join(60)
-                            return True
+                            return b""
                 rq.put(None)
                 worker.join(60)
-                return False
+                return bytearray()
             else:
                 buffer = bytearray()
                 while length > 0:
@@ -925,7 +815,7 @@ class DAXFlash(metaclass=LogBase):
                 if display:
                     self.mtk.daloader.progress.show_progress("Read", total, total, display)
                 return buffer
-        return False
+        return b""
 
     class ShutDownModes:
         NORMAL = 0

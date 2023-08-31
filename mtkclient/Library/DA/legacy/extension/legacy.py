@@ -4,19 +4,21 @@ from struct import unpack, pack
 from mtkclient.Library.settings import hwparam
 from mtkclient.config.payloads import pathconfig
 from mtkclient.Library.error import ErrorHandler
-from mtkclient.Library.hwcrypto import crypto_setup, hwcrypto
+from mtkclient.Library.Hardware.hwcrypto import crypto_setup, hwcrypto
 from mtkclient.Library.utils import LogBase, logsetup, find_binary
-from mtkclient.Library.seccfg import seccfgV4, seccfgV3
+from mtkclient.Library.Hardware.seccfg import seccfgV4, seccfgV3
 from binascii import hexlify
 from mtkclient.Library.utils import mtktee
 import hashlib
 import json
+
 
 class LCmd:
     CUSTOM_READ = b"\x29"
     CUSTOM_WRITE = b"\x2A"
     ACK = b"\x5A"
     NACK = b"\xA5"
+
 
 class legacyext(metaclass=LogBase):
     def __init__(self, mtk, legacy, loglevel):
@@ -34,10 +36,9 @@ class legacyext(metaclass=LogBase):
         self.rdword = self.mtk.port.rdword
         self.rword = self.mtk.port.rword
         self.legacy = legacy
-        self.Cmd=LCmd()
+        self.Cmd = LCmd()
         self.da2 = None
         self.da2address = None
-
 
     def patch_da2(self, da2):
         da2patched = bytearray(da2)
@@ -71,8 +72,9 @@ class legacyext(metaclass=LogBase):
             POP.W           {R4-R6,LR}
             BX              R3
             """
-            cmdF0 = bytes.fromhex("70 B5 4A F2 C8 64 C8 F2 04 04 63 6A 98 47 63 6A 05 46 98 47 06 46 4F F0 00 01 28 68 05 F1 04 05 A3 6A 98 47 A6 F1 01 06 00 2E F6 D1 5A 20 23 69 BD E8 70 40 18 47")
-            da2patched[check_addr2:check_addr2+len(cmdF0)]=cmdF0
+            cmdF0 = bytes.fromhex(
+                "70 B5 4A F2 C8 64 C8 F2 04 04 63 6A 98 47 63 6A 05 46 98 47 06 46 4F F0 00 01 28 68 05 F1 04 05 A3 6A 98 47 A6 F1 01 06 00 2E F6 D1 5A 20 23 69 BD E8 70 40 18 47")
+            da2patched[check_addr2:check_addr2 + len(cmdF0)] = cmdF0
             self.info("Legacy DA2 CMD F0 is patched.")
         else:
             self.warning("Legacy DA2 CMD F0 not patched.")
@@ -100,12 +102,13 @@ class legacyext(metaclass=LogBase):
         return res
 
     def custom_read(self, addr, length):
-        dwords=length//4
-        if length%4!=0:
-            dwords+=1
-        data = bytearray(b"".join(int.to_bytes(val,4,'little') for val in [self.legacy.read_reg32(addr + pos * 4) for pos in range(dwords)]))
-        #res = self.legacy.custom_F0(addr, dwords)
-        #data = bytearray(b"".join([int.to_bytes(val,4,'little') for val in res]))
+        dwords = length // 4
+        if length % 4 != 0:
+            dwords += 1
+        data = bytearray(b"".join(int.to_bytes(val, 4, 'little') for val in
+                                  [self.legacy.read_reg32(addr + pos * 4) for pos in range(dwords)]))
+        # res = self.legacy.custom_F0(addr, dwords)
+        # data = bytearray(b"".join([int.to_bytes(val,4,'little') for val in res]))
         return data[:length]
 
     def writeregister(self, addr, dwords):
@@ -193,19 +196,19 @@ class legacyext(metaclass=LogBase):
             return True, "Successfully wrote seccfg."
         return False, "Error on writing seccfg config to flash."
 
-    def decrypt_tee(self, filename="tee1.bin", aeskey1:bytes=None, aeskey2:bytes=None):
+    def decrypt_tee(self, filename="tee1.bin", aeskey1: bytes = None, aeskey2: bytes = None):
         hwc = self.cryptosetup()
         with open(filename, "rb") as rf:
-            data=rf.read()
-            idx=0
-            while idx!=-1:
-                idx=data.find(b"EET KTM ",idx+1)
-                if idx!=-1:
+            data = rf.read()
+            idx = 0
+            while idx != -1:
+                idx = data.find(b"EET KTM ", idx + 1)
+                if idx != -1:
                     mt = mtktee()
                     mt.parse(data[idx:])
-                    rdata=hwc.mtee(data=mt.data, keyseed=mt.keyseed, ivseed=mt.ivseed,
-                                   aeskey1=aeskey1, aeskey2=aeskey2)
-                    open("tee_"+hex(idx)+".dec","wb").write(rdata)
+                    rdata = hwc.mtee(data=mt.data, keyseed=mt.keyseed, ivseed=mt.ivseed,
+                                     aeskey1=aeskey1, aeskey2=aeskey2)
+                    open("tee_" + hex(idx) + ".dec", "wb").write(rdata)
 
     def read_pubk(self):
         if self.mtk.config.chipconfig.efuse_addr is not None:
@@ -222,9 +225,9 @@ class legacyext(metaclass=LogBase):
         meid = self.config.get_meid()
         socid = self.config.get_socid()
         hwcode = self.config.get_hwcode()
-        pubk=self.read_pubk()
+        pubk = self.read_pubk()
         if pubk is not None:
-            retval["pubkey"]=pubk.hex()
+            retval["pubkey"] = pubk.hex()
         self.info("PUBK        : " + pubk.hex())
         self.config.hwparam.writesetting("pubkey", pubk.hex())
         if meid is not None:
@@ -250,21 +253,21 @@ class legacyext(metaclass=LogBase):
             rpmb2key = hwc.aes_hwcrypt(btype="dxcc", mode="rpmb2")
             self.info("Generating dxcc km key...")
             ikey = hwc.aes_hwcrypt(btype="dxcc", mode="itrustee")
-            #self.info("Generating dxcc platkey + provkey key...")
-            #platkey, provkey = hwc.aes_hwcrypt(btype="dxcc", mode="prov")
-            #self.info("Provkey     : " + hexlify(provkey).decode('utf-8'))
-            #self.info("Platkey     : " + hexlify(platkey).decode('utf-8'))
+            # self.info("Generating dxcc platkey + provkey key...")
+            # platkey, provkey = hwc.aes_hwcrypt(btype="dxcc", mode="prov")
+            # self.info("Provkey     : " + hexlify(provkey).decode('utf-8'))
+            # self.info("Platkey     : " + hexlify(platkey).decode('utf-8'))
             if rpmbkey is not None:
                 self.info("RPMB        : " + hexlify(rpmbkey).decode('utf-8'))
-                self.config.hwparam.writesetting("rpmbkey",hexlify(rpmbkey).decode('utf-8'))
+                self.config.hwparam.writesetting("rpmbkey", hexlify(rpmbkey).decode('utf-8'))
                 retval["rpmbkey"] = hexlify(rpmbkey).decode('utf-8')
             if rpmb2key is not None:
                 self.info("RPMB2       : " + hexlify(rpmb2key).decode('utf-8'))
-                self.config.hwparam.writesetting("rpmb2key",hexlify(rpmb2key).decode('utf-8'))
+                self.config.hwparam.writesetting("rpmb2key", hexlify(rpmb2key).decode('utf-8'))
                 retval["rpmb2key"] = hexlify(rpmb2key).decode('utf-8')
             if fdekey is not None:
                 self.info("FDE         : " + hexlify(fdekey).decode('utf-8'))
-                self.config.hwparam.writesetting("fdekey",hexlify(fdekey).decode('utf-8'))
+                self.config.hwparam.writesetting("fdekey", hexlify(fdekey).decode('utf-8'))
                 retval["fdekey"] = hexlify(fdekey).decode('utf-8')
             if ikey is not None:
                 self.info("iTrustee    : " + hexlify(ikey).decode('utf-8'))
@@ -291,8 +294,8 @@ class legacyext(metaclass=LogBase):
             return retval
         elif self.config.chipconfig.sej_base is not None:
             if os.path.exists("tee.json"):
-                val=json.loads(open("tee.json","r").read())
-                self.decrypt_tee(val["filename"],bytes.fromhex(val["data"]),bytes.fromhex(val["data2"]))
+                val = json.loads(open("tee.json", "r").read())
+                self.decrypt_tee(val["filename"], bytes.fromhex(val["data"]), bytes.fromhex(val["data2"]))
             if meid == b"":
                 if self.config.chipconfig.meid_addr is None:
                     meid_addr = 0x1008ec
@@ -323,7 +326,7 @@ class legacyext(metaclass=LogBase):
             else:
                 self.info("SEJ Mode: No meid found. Are you in brom mode ?")
         if self.config.chipconfig.gcpu_base is not None:
-            if self.config.hwcode in [0x335,0x8167,0x8163,0x8176]:
+            if self.config.hwcode in [0x335, 0x8167, 0x8163, 0x8176]:
                 self.info("Generating gcpu mtee2 key...")
                 mtee2 = hwc.aes_hwcrypt(btype="gcpu", mode="mtee")
                 if mtee2 is not None:

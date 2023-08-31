@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
-# (c) B.Kerler 2018-2021 GPLv3 License
+# (c) B.Kerler 2018-2023 GPLv3 License
 import logging
 
 import usb.core  # pyusb
@@ -254,7 +254,8 @@ class usb_class(DeviceClass):
         self.device = None
         self.EP_OUT = None
         self.EP_IN = None
-        devices = usb.core.find(find_all=True, bDeviceClass=0x2, backend=self.backend)
+        devclass = 0x2
+        devices = usb.core.find(find_all=True, bDeviceClass=devclass, backend=self.backend)
         for dev in devices:
             for usbid in self.portconfig:
                 if dev.idProduct == usbid[1] and dev.idVendor == usbid[0]:
