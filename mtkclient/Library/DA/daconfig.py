@@ -223,6 +223,8 @@ class DAconfig(metaclass=LogBase):
                     bootldr.seek(0x6C + (i * 0xDC))
                     da = DA(bootldr.read(0xDC))
                     da.setfilename(loader)
+                    if da.hw_code == 0x8127 and "5.1824" not in loader:
+                        continue
                     if da.hw_code not in self.dasetup:
                         if da.hw_code!=0:
                             self.dasetup[da.hw_code] = [da]

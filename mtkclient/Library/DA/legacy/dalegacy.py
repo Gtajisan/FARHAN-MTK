@@ -232,7 +232,7 @@ class DALegacy(metaclass=LogBase):
         self.usbwrite(pack("B", self.config.bmtflag))
         self.usbwrite(pack(">I", self.config.bmtpartsize))
         # unsigned char force_charge=0x02; //Setting in tool: 0x02=Auto, 0x01=On
-        force_charge = 0x02
+        force_charge = 0x01
         self.usbwrite(pack("B", force_charge))
         resetkeys = 0x01  # default
         if hwcode == 0x6583:
@@ -247,7 +247,10 @@ class DALegacy(metaclass=LogBase):
         if hwcode == 0x6592:
             is_gpt_solution = 0
             self.usbwrite(pack(">I", is_gpt_solution))
-        elif hwcode == 0x6580 or hwcode == 0x8163:
+        elif hwcode == 0x6580 or hwcode == 0x8163 or hwcode == 0x8127:
+            if hwcode == 0x8127:
+                is_gpt_solution = 0
+                self.usbwrite(pack(">I", is_gpt_solution))
             slc_percent = 0x1
             self.usbwrite(pack(">I", slc_percent))
             unk = b"\x46\x46\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xFF\x00\x00\x00"
@@ -267,10 +270,14 @@ class DALegacy(metaclass=LogBase):
             self.usbwrite(pack(">I", newcombo))
         time.sleep(0.350)
         buffer = self.usbread(toread)
-        if buffer == b'':
+        if len(buffer) < 4:
             self.error("Didn't receive Stage2 dram info, please check usb cable/hub and retry.")
             return False
-        if toread == 4 and buffer == pack(">I", 0xBC3):
+        errorcode = int.from_bytes(buffer,'big')
+        if errorcode != 0xBC3:
+            self.error(self.eh.status(errorcode))
+            return False
+        if toread == 4 and errorcode == 0xBC3:
             buffer += self.usbread(4)
             pdram = [b"", b""]
             draminfo = self.usbread(16)
@@ -292,7 +299,15 @@ class DALegacy(metaclass=LogBase):
                                 break
                     if found:
                         break
-            if self.usbread(4) == pack(">I", 0xBC4):  # Nand_Status
+            returnval = self.usbread(4)
+            if len(returnval)!=4:
+                self.error("Didn't get a response on dram read")
+                return False
+            errorval = errorcode = int.from_bytes(returnval,'big')
+            if errorval != 0xBC4:
+                self.error(self.eh.status(errorval))
+                return False
+            else:
                 nand_id_count = unpack(">H", self.usbread(2))[0]
                 self.info("Reading dram nand info ...")
                 nand_ids = []
@@ -316,7 +331,8 @@ class DALegacy(metaclass=LogBase):
                             self.info("RAM-Length: " + hex(dramlength))
                             self.usbwrite(self.Rsp.ACK)
                             lendram = len(self.daconfig.emi)
-                            self.usbwrite(pack(">I", lendram))
+                            if hwcode != 0x8127:
+                                self.usbwrite(pack(">I", lendram))
                         elif self.daconfig.emiver in [0x0B]:
                             info = self.usbread(0x10)  # 0x000000BC
                             self.info("RAM-Info: " + hexlify(info).decode('utf-8'))
@@ -442,7 +458,7 @@ class DALegacy(metaclass=LogBase):
         pi = passinfo(self.usbread(0xA))
         if pi.ack == 0x5A:
             return True
-        elif pi.m_download_status == 0x5A:
+        elif pi.m_download_status & 0xFF == 0x5A:
             tmp = self.usbread(1)
             return True
         return False

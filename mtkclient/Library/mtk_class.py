@@ -31,6 +31,7 @@ class Mtk(metaclass=LogBase):
         self.pathconfig = pathconfig()
         self.__logger = logsetup(self, self.__logger, loglevel, config.gui)
         self.eh = ErrorHandler()
+        self.serialportname = serialportname
         if preinit:
             self.setup(self.vid, self.pid, self.interface, serialportname)
 

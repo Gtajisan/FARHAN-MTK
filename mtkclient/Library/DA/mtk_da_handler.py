@@ -75,7 +75,7 @@ class DA_handler(metaclass=LogBase):
 
     def configure_da(self, mtk, preloader):
         mtk.port.cdc.connected = mtk.port.cdc.connect()
-        if mtk.port.cdc.connected is None or not mtk.port.cdc.connected:
+        if mtk.port.cdc.connected is None or not mtk.port.cdc.connected or mtk.serialportname is not None:
             mtk.preloader.init()
         else:
             if mtk.port.cdc.connected and os.path.exists(".state"):
