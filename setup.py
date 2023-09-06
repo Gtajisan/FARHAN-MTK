@@ -21,7 +21,6 @@ setup(
     license='GPLv3 License',
     install_requires=[
     'colorama',
-    'usb',
     'pyusb',
     'pyserial',
     'pycryptodome',
