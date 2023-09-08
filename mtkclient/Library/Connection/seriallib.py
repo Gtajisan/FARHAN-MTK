@@ -3,6 +3,9 @@
 # (c) B.Kerler 2018-2022
 import time
 import sys
+
+from mtkclient.Library.DA.xml.xml_param import max_xml_data_length
+
 if sys.platform != "win32":
     import termios
 
@@ -161,14 +164,6 @@ class serial_class(DeviceClass):
         self.device.timeout = timeout
         epr = self.device.read
         extend = res.extend
-        if self.xmlread:
-            info=self.device.read(6)
-            bytestoread=resplen-len(info)
-            extend(info)
-            if b"<?xml " in info:
-                while not b"response " in res or res[-7:]!=b"</data>":
-                    extend(epr(1))
-                return res
         bytestoread = resplen
         while len(res) < bytestoread:
             try:
@@ -176,6 +171,45 @@ class serial_class(DeviceClass):
                 if len(val)==0:
                     break
                 extend(val)
+            except Exception as e:
+                error = str(e)
+                if "timed out" in error:
+                    if timeout is None:
+                        return b""
+                    self.debug("Timed out")
+                    if timeout == 10:
+                        return b""
+                    timeout += 1
+                    pass
+                elif "Overflow" in error:
+                    self.error("USB Overflow")
+                    return b""
+                else:
+                    self.info(repr(e))
+                    return b""
+
+        if loglevel == logging.DEBUG:
+            self.debug(inspect.currentframe().f_back.f_code.co_name + ":" + hex(resplen))
+            if self.loglevel == logging.DEBUG:
+                self.verify_data(res[:resplen], "RX:")
+        return res[:resplen]
+
+    def usbxmlread(self, timeout=0):
+        resplen = self.device.in_waiting
+        res = bytearray()
+        loglevel = self.loglevel
+        self.device.timeout = timeout
+        epr = self.device.read
+        extend = res.extend
+        bytestoread = max_xml_data_length
+        while len(res) < bytestoread:
+            try:
+                val=epr(bytestoread)
+                if len(val)==0:
+                    break
+                extend(val)
+                if res[-1]==b"\x00":
+                    break
             except Exception as e:
                 error = str(e)
                 if "timed out" in error:

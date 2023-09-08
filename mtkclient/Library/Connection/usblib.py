@@ -15,6 +15,8 @@ from struct import pack, calcsize
 from enum import Enum
 from binascii import hexlify
 from ctypes import c_void_p, c_int
+
+from mtkclient.Library.DA.xml.xml_param import max_xml_data_length
 from mtkclient.Library.utils import *
 from mtkclient.Library.Connection.devicehandler import DeviceClass
 USB_DIR_OUT = 0  # to device
@@ -452,6 +454,46 @@ class usb_class(DeviceClass):
                 self.verify_data(res[:resplen], "RX:")
         return res[:resplen]
 
+
+    def usbxmlread(self, maxtimeout=100):
+        res = bytearray()
+        timeout = 0
+        loglevel = self.loglevel
+        epr = self.EP_IN.read
+        wMaxPacketSize = self.EP_IN.wMaxPacketSize
+        extend = res.extend
+        buffer = None
+        if self.fast:
+            buffer = self.buffer[:wMaxPacketSize]
+        while len(res) < max_xml_data_length:
+            try:
+                if self.fast:
+                    rlen = epr(buffer, timeout)
+                    extend(buffer[:rlen])
+                else:
+                    extend(epr(wMaxPacketSize))
+            except usb.core.USBError as e:
+                error = str(e.strerror)
+                if "timed out" in error:
+                    self.debug("Timed out")
+                    if timeout == maxtimeout:
+                        return b""
+                    timeout += 1
+                    pass
+                elif "Overflow" in error:
+                    self.error("USB Overflow")
+                    return b""
+                else:
+                    self.info(repr(e))
+                    return b""
+            if res[-1] == b"\x00":
+                break
+
+        if loglevel == logging.DEBUG:
+            self.debug(inspect.currentframe().f_back.f_code.co_name + ":" + hex(len(res)))
+            if self.loglevel == logging.DEBUG:
+                self.verify_data(res, "RX:")
+        return res
 
     def ctrl_transfer(self, bmRequestType, bRequest, wValue, wIndex, data_or_wLength):
         ret = self.device.ctrl_transfer(bmRequestType=bmRequestType, bRequest=bRequest, wValue=wValue, wIndex=wIndex,

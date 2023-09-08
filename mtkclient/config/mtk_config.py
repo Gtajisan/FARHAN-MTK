@@ -172,7 +172,7 @@ class Mtk_Config(metaclass=LogBase):
         if self.chipconfig.ap_dma_mem is None:
             self.chipconfig.ap_dma_mem = 0x11000000 + 0x1A0
         if self.chipconfig.damode is None:
-            self.chipconfig.damode = damodes.DEFAULT
+            self.chipconfig.damode = damodes.LEGACY
         if self.chipconfig.dxcc_base is None:
             self.chipconfig.dxcc_base = None
         if self.chipconfig.meid_addr is None:

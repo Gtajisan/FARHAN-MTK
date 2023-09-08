@@ -67,19 +67,25 @@ int msdc_pio_read(struct msdc_host *host, void *buf)
             sdr_write32(MSDC_INT,ints);
         }
         if(ints & MSDC_INT_DATTMO){
+            #ifdef DEBUG
             printf("Data timeout\n");
+            #endif
             error = (unsigned int)-ETIMEDOUT;
             msdc_reset_hw(host->id); 
             break;
             }
         else if(ints & MSDC_INT_DATCRCERR){
+            #ifdef DEBUG
             printf("Data CRC\n");
+            #endif
             error = (unsigned int)-EIO;
             msdc_reset_hw(host->id); 
             break;
             }
         else if(ints & MSDC_INT_XFER_COMPL){
+            #ifdef DEBUG
             printf("Transfer complete\n");
+            #endif
             get_xfer_done = 1;
             if((num == 0) && (left == 0))   
                 break;
@@ -127,8 +133,7 @@ int msdc_pio_read(struct msdc_host *host, void *buf)
     }
     // data->bytes_xfered += size;
     N_MSG(FIO, "        PIO Read<%d>bytes\n", size);
-        
-    sdr_clr_bits(MSDC_INTEN, wints);    
+    sdr_clr_bits(MSDC_INTEN, wints);
     if(error) ERR_MSG("read pio data->error<%d> left<%d> size<%d>\n", error, left, size);
     return error;
 }

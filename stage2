@@ -12,7 +12,7 @@ from binascii import hexlify
 from struct import pack, unpack
 from mtkclient.Library.Connection.usblib import usb_class
 from mtkclient.Library.utils import LogBase
-from mtkclient.Library.utils import print_progress
+from mtkclient.Library.utils import progress
 from mtkclient.Library.Hardware.hwcrypto import crypto_setup, hwcrypto
 from mtkclient.config.mtk_config import Mtk_Config
 from mtkclient.config.usb_ids import default_ids
@@ -134,6 +134,7 @@ class Stage2(metaclass=LogBase):
         if not self.emmc_inited:
             self.init_emmc()
         wf = None
+        pg = progress(pagesize=0x200)
         buffer = bytearray()
         if filename is not None:
             wf = open(filename, "wb")
@@ -145,9 +146,6 @@ class Stage2(metaclass=LogBase):
         self.usbwrite(pack(">I", 0x1002))
         self.usbwrite(pack(">I", type))
 
-        if display:
-            print_progress(0, 100, prefix='Progress:', suffix='Complete', bar_length=50)
-
         # kick-wdt
         # self.usbwrite(pack(">I", 0xf00dd00d))
         # self.usbwrite(pack(">I", 0x3001))
@@ -156,21 +154,21 @@ class Stage2(metaclass=LogBase):
         bytesread = 0
         old = 0
         # emmc_read(0)
-        for sector in range(startsector, sectors):
-            self.usbwrite(pack(">I", 0xf00dd00d))
-            self.usbwrite(pack(">I", 0x1000))
-            self.usbwrite(pack(">I", sector))
+        self.usbwrite(pack(">I", 0xf00dd00d))
+        self.usbwrite(pack(">I", 0x1000))
+        self.usbwrite(pack(">I", startsector))
+        self.usbwrite(pack(">I", sectors))
+
+        if display:
+            pg.show_progress(prefix="Progress:",pos=0,total=sectors)
+
+        for sector in range(sectors):
             tmp = self.usbread(0x200)
             if not tmp or len(tmp) != 0x200:
                 self.error("Error on getting data")
                 return
             if display:
-                prog = sector / sectors * 100
-                if round(prog, 1) > old:
-                    print_progress(prog, 100, prefix='Progress:',
-                                   suffix='Complete, Sector:' + hex(sector),
-                                   bar_length=50)
-                    old = round(prog, 1)
+                pg.show_progress(prefix="Progress:", pos=sector, total=sectors)
             bytesread += len(tmp)
             size = min(bytestoread, len(tmp))
             if wf is not None:
@@ -179,11 +177,20 @@ class Stage2(metaclass=LogBase):
                 buffer.extend(tmp)
             bytestoread -= size
         if display:
-            print_progress(100, 100, prefix='Complete: ', suffix=filename, bar_length=50)
+            pg.show_progress(prefix="Progress:", pos=sectors, total=sectors)
         if wf is not None:
             wf.close()
         else:
             return buffer[start % 0x200:(start % 0x200) + length]
+
+    def userdata(self, start=0, length=32*0x200, filename="data.bin"):
+        sectors = 0
+        if length != 0:
+            sectors = (length // 0x200) + (1 if length % 0x200 else 0)
+        self.info("Reading user data...")
+        if self.cdc.connected:
+            self.readflash(type=0, start=start, length=length, display=True, filename=filename)
+
 
     def preloader(self, start, length, filename):
         sectors = 0
@@ -304,14 +311,17 @@ class Stage2(metaclass=LogBase):
             return False
 
     def rpmb(self, start, length, filename, reverse=False):
+        pg = progress(pagesize=0x100)
         if not self.emmc_inited:
             self.init_emmc()
         if start == 0:
             start = 0
         else:
             start = (start // 0x100)
+        if start>0xFFFF:
+            start=0xFFFF
         if length == 0:
-            sectors = 4 * 1024 * 1024 // 0x100
+            sectors = 16 * 1024 * 1024 // 0x100
         else:
             sectors = (length // 0x100) + (1 if length % 0x100 else 0)
         self.info("Reading rpmb...")
@@ -324,33 +334,43 @@ class Stage2(metaclass=LogBase):
         # self.usbwrite(pack(">I", 0xf00dd00d))
         # self.usbwrite(pack(">I", 0x3001))
 
-        print_progress(0, 100, prefix='Progress:', suffix='Complete', bar_length=50)
         bytesread = 0
         old = 0
         bytestoread = sectors * 0x100
+        count = sectors
+        pg = progress(pagesize=0x200)
+        if sectors>0xFFFF:
+            count=0xFFFF
         with open(filename, "wb") as wf:
-            for sector in range(start, sectors):
-                self.usbwrite(pack(">I", 0xf00dd00d))
-                self.usbwrite(pack(">I", 0x2000))
-                self.usbwrite(pack(">H", sector))
+            self.usbwrite(pack(">I", 0xf00dd00d))
+            self.usbwrite(pack(">I", 0x2000))
+            self.usbwrite(pack(">H", start))
+            self.usbwrite(pack(">H", count))
+            for sector in range(count):
                 tmp = self.usbread(0x100)
                 if reverse:
                     tmp = tmp[::-1]
                 if len(tmp) != 0x100:
                     self.error("Error on getting data")
                     return
-                prog = sector / sectors * 100
-                if round(prog, 1) > old:
-                    print_progress(prog, 100, prefix='Progress:',
-                                   suffix='Complete, Sector:' + hex((sectors * 0x200) - bytestoread),
-                                   bar_length=50)
-                    old = round(prog, 1)
+                pg.show_progress(prefix="Progress:",pos=sector,total=sectors)
                 bytesread += 0x100
                 size = min(bytestoread, len(tmp))
                 wf.write(tmp[:size])
                 bytestoread -= size
-            print_progress(100, 100, prefix='Complete: ', suffix=filename, bar_length=50)
-        print("Done")
+            while bytestoread>0:
+                self.usbwrite(pack(">I", 0xf00dd00d))
+                self.usbwrite(pack(">I", 0x2000))
+                self.usbwrite(pack(">H", sector+1))
+                self.usbwrite(pack(">H", 1))
+                tmp = self.usbread(0x100)
+                size = min(bytestoread, len(tmp))
+                wf.write(tmp[:size])
+                bytestoread -= size
+                pg.show_progress(prefix="Progress:", pos=sector, total=sectors)
+                sector+=1
+            pg.show_progress(prefix="Progress:", pos=sectors, total=sectors)
+            print("Done")
 
     def keys(self, data=b"", otp=None, mode="dxcc"):
         # self.hwcrypto.disable_range_blacklist("cqdma",self.cmd_C8)
@@ -500,6 +520,7 @@ def getint(valuestr):
 cmds = {
     "rpmb": 'Dump rpmb',
     "preloader": 'Dump preloader',
+    "data": 'Dump mmc data',
     "boot2": 'Dump boot2',
     "reboot": 'Reboot phone',
     "memread": "Read memory [Example: memread 0 0x10]",
@@ -523,7 +544,7 @@ def showcommands():
 
 def main():
     parser = argparse.ArgumentParser(description=info)
-    subparsers = parser.add_subparsers(dest="cmd", help='Valid commands are: rpmb, preloader, boot2, memread, memwrite, keys')
+    subparsers = parser.add_subparsers(dest="cmd", help='Valid commands are: rpmb, preloader, data, boot2, memread, memwrite, keys')
 
     parser_rpmb = subparsers.add_parser("rpmb", help="Dump the rpmb")
     parser_rpmb.add_argument('--start', dest='start', type=str,
@@ -541,6 +562,14 @@ def main():
     parser_preloader.add_argument('--length', dest='length', type=str,
                         help='Max length to dump')
     parser_preloader.add_argument('--filename', dest='filename', type=str,
+                        help='Read from / save to filename')
+
+    parser_data = subparsers.add_parser("data", help="Read the mmc")
+    parser_data.add_argument('--start', dest='start', type=str,
+                        help='Start offset to dump')
+    parser_data.add_argument('--length', dest='length', type=str,
+                        help='Max length to dump')
+    parser_data.add_argument('--filename', dest='filename', type=str,
                         help='Read from / save to filename')
 
     parser_boot2 = subparsers.add_parser("boot2", help="Dump boot2")
@@ -609,6 +638,14 @@ def main():
             start = getint(args.start)
             length = getint(args.length)
             st2.preloader(start, length, filename=filename)
+        elif cmd == "data":
+            if args.filename is None:
+                filename = os.path.join("logs", "data")
+            else:
+                filename = args.filename
+            start = getint(args.start)
+            length = getint(args.length)
+            st2.userdata(start, length, filename=filename)
         elif cmd == "boot2":
             if args.filename is None:
                 filename = os.path.join("logs", "boot2")

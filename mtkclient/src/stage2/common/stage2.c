@@ -1,5 +1,5 @@
 #include <inttypes.h>
-#define DEBUG 1
+//#define DEBUG 1
 #include "tools.h"
 #include "printf.h"
 #include "libc.h"
@@ -61,11 +61,10 @@ __attribute__ ((section(".text.main"))) int main() {
     host.ocr_avail = MSDC_OCR_AVAIL;
     hex_dump(&param, 0,0x16);
     int mmcinited=0;
-
+    unsigned int pos=0;
+    unsigned int count=0;
     while (1) {
-        #ifdef DEBUG
         printf("Waiting for cmd\n");
-        #endif
         memset(buf, 0, sizeof(buf));
         magic = recv_dword(&param);
         if (magic != 0xf00dd00d) {
@@ -77,12 +76,16 @@ __attribute__ ((section(".text.main"))) int main() {
         switch (cmd) {
         case 0x1000: {
             block = recv_dword(&param);
+            count = recv_dword(&param);
             printf("Read block 0x%08X\n", block);
             memset(buf, 0, sizeof(buf));
-            if (mmc_read(&host, block, buf) != 0) {
-                printf("Read error!\n");
-            } else {
-                param.usbdl_put_data(buf, sizeof(buf));
+            for (pos=block;pos<block+count;pos++)
+            {
+                if (mmc_read(&host, pos, buf) != 0) {
+                    printf("Read error!\n");
+                } else {
+                    param.usbdl_put_data(buf, sizeof(buf));
+                }
             }
             break;
         }
@@ -110,13 +113,18 @@ __attribute__ ((section(".text.main"))) int main() {
         case 0x2000: {
             printf("Read rpmb\n");
             addr = (uint16_t)recv_word(&param);
-            if (mmc_rpmb_read(&host, addr, buf)!=0)
+            count = (uint16_t)recv_word(&param);
+            for (pos=addr;pos<(unsigned int)addr+count;pos++)
             {
-                printf("Read error!\n");
-            }
-            else
-            {
-                param.usbdl_put_data(buf, 0x100);
+                if (mmc_rpmb_read(&host, (uint16_t)pos, buf)!=0)
+                {
+                    printf("Read error!\n");
+                    break;
+                }
+                else
+                {
+                    param.usbdl_put_data(buf, 0x100);
+                }
             }
             break;
         }

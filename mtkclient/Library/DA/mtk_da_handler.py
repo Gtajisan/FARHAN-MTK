@@ -8,7 +8,7 @@ from mtkclient.Library.utils import LogBase, logsetup, getint
 from mtkclient.config.payloads import pathconfig
 from mtkclient.Library.error import ErrorHandler
 from mtkclient.Library.utils import progress
-from mtkclient.config.brom_config import efuse
+from mtkclient.config.brom_config import efuse, damodes
 
 
 class DA_handler(metaclass=LogBase):
@@ -552,7 +552,7 @@ class DA_handler(metaclass=LogBase):
         bytestoread = length
         pos = 0
         pagesize = 0x200
-        if self.mtk.daloader.xflash:
+        if self.mtk.daloader.flashmode == damodes.XFLASH:
             pagesize = self.mtk.daloader.get_packet_length()
         pg = progress(pagesize)
         bytesread = 0

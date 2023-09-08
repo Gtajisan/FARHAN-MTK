@@ -75,6 +75,9 @@ class DeviceClass(metaclass=LogBase):
     def usbread(self, resplen=None, timeout=0):
         raise NotImplementedError()
 
+    def usbxmlread(self, maxtimeout=100):
+        raise NotImplementedError()
+
     def ctrl_transfer(self, bmRequestType, bRequest, wValue, wIndex, data_or_wLength):
         raise NotImplementedError()
 

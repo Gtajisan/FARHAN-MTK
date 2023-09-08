@@ -742,9 +742,9 @@ int mmc_rpmb_get_write_count(struct msdc_host *host, uint32_t *wc) {
                 "MSDC0", ret, req.type);
 
     mmc_rpmb_post_frame(&rpmb_req);
-
+    #ifdef DEBUG
     printf("result = %d\n", result);
-
+    #endif
     return ret;
 }
 
@@ -792,9 +792,9 @@ int mmc_rpmb_read(struct msdc_host *host, uint16_t addr, void *buf) {
                 "MSDC0", ret, req.type);
 
     mmc_rpmb_post_frame(&rpmb_req);
-
+    #ifdef DEBUG
     printf("result = %d\n", result);
-
+    #endif
     byteswap(buf, 0x100);
 
     return ret;
@@ -875,9 +875,9 @@ int mmc_rpmb_write(struct msdc_host *host, void *buf) {
                 "MSDC0", ret, req.type);
 
     mmc_rpmb_post_frame(&rpmb_req);
-
+    #ifdef DEBUG
     printf("result = %d\n", result);
-
+    #endif
     return ret;
 }
 

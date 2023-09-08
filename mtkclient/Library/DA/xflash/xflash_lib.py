@@ -20,8 +20,6 @@ from mtkclient.Library.thread_handling import writedata, Queue, Thread
 rq = Queue()
 
 
-
-
 class DAXFlash(metaclass=LogBase):
     def __init__(self, mtk, daconfig, loglevel=logging.INFO):
         self.__logger = logsetup(self, self.__logger, loglevel, mtk.config.gui)
@@ -952,7 +950,7 @@ class DAXFlash(metaclass=LogBase):
                 return True
         return False
 
-    def upload(self):
+    def upload_da1(self):
         if self.daconfig.da_loader is None:
             self.error("No valid da loader found... aborting.")
             return False
@@ -1057,7 +1055,7 @@ class DAXFlash(metaclass=LogBase):
             self.config.set_gui_status(self.config.tr("Connected to stage2 with higher speed"))
 
     def upload_da(self):
-        if self.upload():
+        if self.upload_da1():
             self.get_expire_date()
             self.set_reset_key(0x68)
             # self.set_battery_opt(0x2)

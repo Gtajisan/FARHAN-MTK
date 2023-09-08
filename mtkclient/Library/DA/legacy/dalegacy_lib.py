@@ -463,7 +463,7 @@ class DALegacy(metaclass=LogBase):
             return True
         return False
 
-    def upload(self):
+    def upload_da1(self):
         if not self.config.iot:
             if self.daconfig.da_loader is None:
                 self.error("No valid da loader found... aborting.")

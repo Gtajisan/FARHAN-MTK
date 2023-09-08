@@ -17,12 +17,19 @@ typedef int bool;
 
 #include "../common/printf.h"
 
-#define printk printf
 #define KERN_WARNING "[KERN] "
 
-#define N_MSG(evt, fmt, args...) printf(fmt, ##args)
-#define ERR_MSG printf
-#define IRQ_MSG printf
+#ifdef DEBUG
+    #define N_MSG(evt, fmt, args...) printf(fmt, ##args)
+    #define ERR_MSG printf
+    #define IRQ_MSG printf
+    #define printk printf
+#else
+    #define N_MSG(evt, fmt, args...) (fmt, ##args)
+    #define ERR_MSG void
+    #define IRQ_MSG void
+    #define printk void
+#endif
 
 void fatal(const char *err);
 
