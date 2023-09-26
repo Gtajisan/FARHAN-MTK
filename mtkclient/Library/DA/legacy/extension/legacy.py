@@ -228,8 +228,8 @@ class legacyext(metaclass=LogBase):
         pubk = self.read_pubk()
         if pubk is not None:
             retval["pubkey"] = pubk.hex()
-        self.info("PUBK        : " + pubk.hex())
-        self.config.hwparam.writesetting("pubkey", pubk.hex())
+            self.info("PUBK        : " + pubk.hex())
+            self.config.hwparam.writesetting("pubkey", pubk.hex())
         if meid is not None:
             self.info("MEID        : " + hexlify(meid).decode('utf-8'))
             retval["meid"] = hexlify(meid).decode('utf-8')
