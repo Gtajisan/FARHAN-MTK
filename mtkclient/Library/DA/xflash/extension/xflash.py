@@ -410,7 +410,7 @@ class xflashext(metaclass=LogBase):
     def read_rpmb(self, filename=None, display=True):
         progressbar = progress(1, self.mtk.config.guiprogress)
         sectors = 0
-        val = self.custom_rpmb_init()
+        #val = self.custom_rpmb_init()
         ufs = False
         if self.xflash.emmc.rpmb_size != 0:
             sectors = self.xflash.emmc.rpmb_size // 0x100
